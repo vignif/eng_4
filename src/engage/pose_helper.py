@@ -4,6 +4,8 @@ import math
 from tsmoothie.smoother import LowessSmoother
 import tf
 
+from opendr.engine.target import Pose 
+
 from engage.utils import RandomID
 from engage.marker_visualisation import MarkerMaker
 
@@ -13,45 +15,68 @@ from image_geometry import PinholeCameraModel
 from visualization_msgs.msg import Marker 
 
 class HRIPoseBody:
-    def __init__(self,id,time,visualise=False,smoothing=False,smoothing_window=None):
+    def __init__(self,id,time,visualise=False,depth_averaging=True,smoothing=False,window=40,marker_pub=None):
         self.id = id
+        self.start_time = time
         self.time = time
         self.visualise = visualise
+        self.depth_averaging = depth_averaging
         self.smoothing = smoothing
-        self.smoothing_window = smoothing_window
+        self.window = window
 
         if visualise:
-            self.marker_pub = rospy.Publisher("/markers",Marker,queue_size=100)
+            self.colour = list(np.random.choice(range(256), size=3)/256)
+            self.marker_pub = marker_pub
 
         if smoothing:
             self.smoother = LowessSmoother(smooth_fraction=0.4, iterations=1)
             
         self.pose = None
         self.pose_history = []
+        for i in range(Pose.num_kpts):
+            self.pose_history.append([])
+        self.num_poses = 0
 
     def close(self):
         # To be called upon deletion
-        self.marker_pub.unregister()
+        pass
 
     def update(self,pose,time,rgb_image,rgb_model,depth_model,depth_image,cam_transform):
         self.pose = pose
         self.time = time
 
         # Update skeleton
-        self.update_skeleton(rgb_image)
+        self.update_skeleton(rgb_image,depth_image)
 
         # Update 3D points
         self.update_3D_pose(rgb_model,depth_model,depth_image,cam_transform)
 
-    def update_skeleton(self,rgb_image):
+        # Update pose history
+        self.update_pose_history()
+
+        # Smoothing
+        if self.smoothing:
+            self.smooth_pose()
+
+        # Average depth for difficult points
+        if self.depth_averaging:
+            self.average_depths()
+
+        # Visualisation
+        if self.visualise:
+            self.visualise_skeleton()
+
+        
+
+    def update_skeleton(self,rgb_image,depth_image):
         # Transform OpenDR pose into normalised 2D skeleton
         self.skeleton = Skeleton2D()
         self.skeleton.header.stamp = self.time
 
         self.skeleton.skeleton = [
             NormalizedPointOfInterest2D(
-                kpt[0] / rgb_image.shape[1],
-                kpt[1] / rgb_image.shape[0],
+                kpt[0] / depth_image.shape[1],
+                kpt[1] / depth_image.shape[0],
                 self.pose.confidence
             ) 
             if (kpt[0] != -1 and kpt[1] != -1) else None for kpt in self.pose.data
@@ -66,15 +91,52 @@ class HRIPoseBody:
         for cam_coord in camera_coords:
             if cam_coord is not None:
                 world_coord = inversed_transform.dot(np.append(cam_coord,[1]))[0:3]
+                if sum(world_coord)==0:
+                    world_coord = None
             else:
                 world_coord = None
             world_coords.append(world_coord)
         
-        marker = MarkerMaker.make_marker_sphere(world_coords[1],self.id,0,colour=[1,0,0])
-        if marker is not None:
-            self.marker_pub.publish(marker)
+        self.pose_3D = world_coords
 
+    def update_pose_history(self):
+        self.num_poses += 1
+        overflow = False
+        if self.num_poses > self.window:
+            overflow = True
 
+        for i in range(Pose.num_kpts):
+            self.pose_history[i].append(self.pose_3D[i])
+            if overflow:
+                self.pose_history[i] = self.pose_history[i][-self.window:]
+        if overflow:
+            self.num_poses = self.window
+
+    def smooth_pose(self):
+        if self.num_poses==self.window:
+            new_pose = []
+            for i in range(self.pose.num_kpts):
+                joint_history = [p for p in self.pose_history[i] if p is not None]
+                if len(joint_history)==0:
+                    new_pose.append(None)
+                elif len(joint_history)==1:
+                    new_pose.append(joint_history[0])
+                else:
+                    joint_history = np.stack(joint_history)
+                    self.smoother.smooth(joint_history.T)
+                    smoothed_pose = self.smoother.smooth_data[:,-1]
+                    new_pose.append(smoothed_pose)
+            self.pose_3D = new_pose
+                    
+
+    def average_depths(self):
+        # Replace nose depth with averaged depth of eyes
+        # TODO: Write better code
+        # TODO: This shouldn't be here, should actually be in the point_2D_to_camera function
+        try:
+            self.pose_3D[0][0] = (self.pose_3D[14][0]+self.pose_3D[15][0])/2
+        except:
+            pass
 
 
     def point_2D_to_camera(self,point,rgb_model,depth_model,depth_image):
@@ -97,21 +159,41 @@ class HRIPoseBody:
         x = (x_d - depth_model.cx())*z/depth_model.fx()
         y = (y_d - depth_model.cy())*z/depth_model.fy()
 
+
         return np.array([-z,x,-y])
+    
+    def visualise_skeleton(self):
+        for i in range(len(MarkerMaker.skeleton_pairs)):
+            index_pair = MarkerMaker.skeleton_pairs_indices[i]
+            line_marker = MarkerMaker.make_line_marker(
+                self.pose_3D[index_pair[0]],
+                self.pose_3D[index_pair[1]],
+                self.id,
+                i,
+                colour=self.colour,
+                frame_id="world",
+            )
+            if line_marker is not None:
+                self.marker_pub.publish(line_marker)
+
 
     
 
 class HRIPoseManager:
-    def __init__(self,body_timeout=0.1,visualise=True,smoothing=True,smoothing_window=40):
+    def __init__(self,body_timeout=0.1,body_timein=0.1,visualise=True,smoothing=True,window=40):
         # Parameters
         self.body_timeout = rospy.Duration(body_timeout)
+        self.body_timein = rospy.Duration(body_timein)
         self.visualise = visualise
         self.smoothing = smoothing
-        self.smoothing_window = smoothing_window
+        self.window = window
         # Map from pose id to body id
         self.body_ids = {}
         # Dict of all bodies currently tracked
         self.bodies = {}
+        # Visualise
+        if visualise:
+            self.marker_pub = rospy.Publisher("/markers",Marker,queue_size=100)
 
     def update_camera_model(self,rgb_info,depth_info):
         self.depth_model = PinholeCameraModel()
@@ -131,6 +213,7 @@ class HRIPoseManager:
 
     def process_poses(self,poses,time,rgb_image,depth_image):
         bodies_in_pose = []
+        curr_transform = self.inversed_transform.copy()
 
         # Start by updating the list of bodies
         for pose in poses:
@@ -142,7 +225,8 @@ class HRIPoseManager:
                     time,
                     visualise=self.visualise,
                     smoothing=self.smoothing,
-                    smoothing_window=self.smoothing_window
+                    window=self.window,
+                    marker_pub=self.marker_pub
                 )
             self.bodies[self.body_ids[pose.id]].update(
                 pose,
@@ -151,7 +235,7 @@ class HRIPoseManager:
                 self.rgb_model,
                 self.depth_model,
                 depth_image,
-                self.inversed_transform
+                curr_transform
             )
             bodies_in_pose.append(self.body_ids[pose.id])
         

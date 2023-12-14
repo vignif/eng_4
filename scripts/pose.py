@@ -48,7 +48,7 @@ class PoseEstimationNode:
         self.opendr_bridge = ROSBridge()
 
         # Pose Manager
-        self.pose_manager = HRIPoseManager(smoothing=smoothing,smoothing_window=smoothing_time*rate)
+        self.pose_manager = HRIPoseManager(visualise=True,smoothing=smoothing,window=smoothing_time*rate)
 
         # Subscribers
         self.rgb_image_sub = Subscriber(rgb_image_topic,Image)
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--pose_image_topic", help="Topic for publishing annotated pose images",
                         type=str, default=None)
     parser.add_argument("--accelerate", help="Activates some acceleration features (e.g. reducing number of refinement steps)",
-                        default=None)
+                        default=False)
     args = parser.parse_args(rospy.myargv()[1:])
 
     if args.accelerate:
