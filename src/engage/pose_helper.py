@@ -6,23 +6,56 @@ import tf
 
 from opendr.engine.target import Pose 
 
-from engage.utils import RandomID
+from engage.utils import RandomID,VectorHelper
 from engage.marker_visualisation import MarkerMaker
+from engage.msg import PoseArrayUncertain
 
 from hri_msgs.msg import Skeleton2D, NormalizedPointOfInterest2D, IdsList
 from sensor_msgs.msg import JointState
 from image_geometry import PinholeCameraModel
 from visualization_msgs.msg import Marker 
+from geometry_msgs.msg import Vector3Stamped,TwistStamped
+from geometry_msgs.msg import Pose as GPose
 
 class HRIPoseBody:
-    def __init__(self,id,time,visualise=False,depth_averaging=True,smoothing=False,window=40,marker_pub=None):
+
+    joints = {
+        "nose":0,
+        "neck":1,
+        "r_sho":2,
+        "r_elb":3,
+        "r_wri":4,
+        "l_sho":5,
+        "l_elb":6,
+        "l_wri":7,
+        "r_hip":8,
+        "r_knee":9,
+        "r_ank":10,
+        "l_hip":11,
+        "l_knee":12,
+        "l_ank":13,
+        "r_eye":14,
+        "l_eye":15,
+        "r_ear":16,
+        "l_ear":17,
+    }
+
+    def __init__(self,
+                 id,
+                 time,
+                 visualise=False,
+                 smoothing=False,
+                 window=40,
+                 marker_pub=None,
+                 max_confidence=30,
+                ):
         self.id = id
         self.start_time = time
         self.time = time
         self.visualise = visualise
-        self.depth_averaging = depth_averaging
         self.smoothing = smoothing
         self.window = window
+        self.max_confidence = max_confidence
 
         if visualise:
             self.colour = list(np.random.choice(range(256), size=3)/256)
@@ -31,15 +64,42 @@ class HRIPoseBody:
         if smoothing:
             self.smoother = LowessSmoother(smooth_fraction=0.4, iterations=1)
             
+        # Pose
         self.pose = None
+        self.pose_confidence = 0
         self.pose_history = []
         for i in range(Pose.num_kpts):
             self.pose_history.append([])
         self.num_poses = 0
 
+        # Orientation
+        self.body_normal = None
+        self.face_normal = None
+        self.num_normals = 0
+        self.body_normal_history = []
+        self.face_normal_history = []
+
+        # Velocity
+        self.velocity = None
+        self.position_history = []
+        self.position_times = []
+        self.num_positions = 0
+
+        # Publishers
+        this_body_topic = "/humans/bodies/{}/".format(self.id)
+        self.pose_pub = rospy.Publisher(this_body_topic+"poses",PoseArrayUncertain,queue_size=1)
+        self.vel_pub = rospy.Publisher(this_body_topic+"velocity",TwistStamped,queue_size=1)
+        self.body_or_pub = rospy.Publisher(this_body_topic+"body_orientation",Vector3Stamped,queue_size=1)
+        self.face_or_pub = rospy.Publisher(this_body_topic+"face_orientation",Vector3Stamped,queue_size=1)
+        self.skeleton_pub = rospy.Publisher(this_body_topic+"skeleton2d",Skeleton2D,queue_size=1)
+
     def close(self):
         # To be called upon deletion
-        pass
+        self.pose_pub.unregister()
+        self.vel_pub.unregister()
+        self.body_or_pub.unregister()
+        self.face_or_pub.unregister()
+        self.skeleton_pub.unregister()
 
     def update(self,pose,time,rgb_image,rgb_model,depth_model,depth_image,cam_transform):
         self.pose = pose
@@ -58,15 +118,16 @@ class HRIPoseBody:
         if self.smoothing:
             self.smooth_pose()
 
-        # Average depth for difficult points
-        if self.depth_averaging:
-            self.average_depths()
+        # Calculate orientations
+        self.update_orientations()
 
-        # Visualisation
-        if self.visualise:
-            self.visualise_skeleton()
+        # Calculate velocity
+        self.update_velocity()
 
         
+    '''
+    Poses
+    '''
 
     def update_skeleton(self,rgb_image,depth_image):
         # Transform OpenDR pose into normalised 2D skeleton
@@ -98,6 +159,7 @@ class HRIPoseBody:
             world_coords.append(world_coord)
         
         self.pose_3D = world_coords
+        self.pose_confidence = min(1,self.pose.confidence / self.max_confidence) # OpenDR weirdly only goes up to about 30
 
     def update_pose_history(self):
         self.num_poses += 1
@@ -112,32 +174,123 @@ class HRIPoseBody:
         if overflow:
             self.num_poses = self.window
 
-    def smooth_pose(self):
-        if self.num_poses==self.window:
-            new_pose = []
-            for i in range(self.pose.num_kpts):
-                joint_history = [p for p in self.pose_history[i] if p is not None]
-                if len(joint_history)==0:
-                    new_pose.append(None)
-                elif len(joint_history)==1:
-                    new_pose.append(joint_history[0])
-                else:
-                    joint_history = np.stack(joint_history)
-                    self.smoother.smooth(joint_history.T)
-                    smoothed_pose = self.smoother.smooth_data[:,-1]
-                    new_pose.append(smoothed_pose)
-            self.pose_3D = new_pose
-                    
+    '''
+    Orientations
+    '''
+    def update_orientations(self):
+        self.body_normal = self.body_orientation()
+        self.face_normal = self.face_orientation()
+        self.update_normal_history()
 
-    def average_depths(self):
-        # Replace nose depth with averaged depth of eyes
-        # TODO: Write better code
-        # TODO: This shouldn't be here, should actually be in the point_2D_to_camera function
-        try:
-            self.pose_3D[0][0] = (self.pose_3D[14][0]+self.pose_3D[15][0])/2
-        except:
-            pass
+        if self.smoothing:
+            self.body_normal = self.smooth_vector(self.body_normal_history)
+            self.face_normal = self.smooth_vector(self.face_normal_history)
 
+    def body_orientation(self):
+        # Get the two shoulders used for the normal
+        points = []
+        for joint_name in ["r_sho","l_sho"]:
+            point = self.pose_3D[self.joints[joint_name]]
+            if point is None:
+                # The left and right shoulders are required for the body orientation
+                return None
+            points.append(point)
+
+        # Find a third point
+        l_hip = self.pose_3D[self.joints["l_hip"]]
+        r_hip = self.pose_3D[self.joints["r_hip"]]
+        if l_hip is not None and r_hip is not None:
+            waist = (l_hip+r_hip)/2
+            points.append(waist)
+            return -VectorHelper.get_normal(points)
+        elif self.pose_3D[self.joints["nose"]] is not None:
+            points.append(self.pose_3D[self.joints["nose"]])
+            return VectorHelper.get_normal(points)
+        else:
+            return None
+        
+    def face_orientation(self):
+        # Get the two eyes and nose used for the normañ
+        points = []
+        for joint_name in ["r_eye","l_eye","nose"]:
+            point = self.pose_3D[self.joints[joint_name]]
+            if point is None:
+                # The left and right eyes and the nose are required for the face orientation
+                return None
+            points.append(point.copy())
+
+        # Replace nose depth with average of other depths
+        points[-1][0] = (points[0][0]+points[1][0])/2
+        return -VectorHelper.get_normal(points)
+        
+    def update_normal_history(self):
+        self.num_normals += 1
+
+        self.body_normal_history.append(self.body_normal)
+        self.face_normal_history.append(self.face_normal)
+        if self.num_normals > self.window:
+            self.body_normal_history = self.body_normal_history[-self.window:]
+            self.face_normal_history = self.face_normal_history[-self.window:]
+            self.num_normals = self.window
+        
+    '''
+    Velocity
+    '''
+    def update_velocity(self,base_point="neck"):
+        self.velocity = self.calculate_velocity(base_point=base_point)
+
+
+    def calculate_velocity(self,base_point="neck"):
+        base = self.pose_3D[self.joints[base_point]]
+        if base is None:
+            return None
+        
+
+        if self.smoothing:
+            # Use a history of smoothed positions
+            self.num_positions += 1
+            self.position_history.append(base)
+            self.position_times.append(self.time.to_nsec())
+            if self.num_positions > self.window:
+                self.position_history = self.position_history[-self.window:]
+                self.position_times = self.position_times[-self.window:]
+                self.num_positions = self.window
+            
+            base_history = self.position_history
+            base_history_num = self.num_positions
+        else:
+            # Use a history of unsmoothed positions
+            base_history = self.pose_history[self.joints[base_point]]
+            base_history_num = self.num_poses
+            self.position_times.append(self.time.to_nsec())
+            if len(self.position_times) > self.window:
+                self.position_times = self.position_times[-self.window:]
+
+        if base_history_num == self.window:
+            num_vels = 0
+            vel_sum = np.zeros(3)
+            for i in range(1,base_history_num):
+                if base_history[i] is None or base_history[i-1] is None:
+                    continue
+                pos_dif = base_history[i]-base_history[i-1]
+                time_dif = self.position_times[i]-self.position_times[i-1]
+                time_dif = time_dif/1000000000 # To seconds
+                if time_dif != 0:
+                    vel_sum += pos_dif/time_dif
+                    num_vels += 1
+            return vel_sum/num_vels if num_vels != 0 else None
+        else:
+            return None
+                
+
+            
+
+        
+
+
+    '''
+    Projection
+    '''
 
     def point_2D_to_camera(self,point,rgb_model,depth_model,depth_image):
         if point is None:
@@ -162,6 +315,19 @@ class HRIPoseBody:
 
         return np.array([-z,x,-y])
     
+    '''
+    Visualise
+    '''
+    
+    def visualise_pose(self):
+        # Visualise skeleton
+        self.visualise_skeleton()
+        # Visualise normals
+        self.visualise_normal(self.pose_3D[self.joints["neck"]],self.body_normal,18,[0,1,1])
+        self.visualise_normal(self.pose_3D[self.joints["nose"]],self.face_normal,19,[1,0,1])
+        # Visualise velocity
+        self.visualise_velocity()
+    
     def visualise_skeleton(self):
         for i in range(len(MarkerMaker.skeleton_pairs)):
             index_pair = MarkerMaker.skeleton_pairs_indices[i]
@@ -175,6 +341,104 @@ class HRIPoseBody:
             )
             if line_marker is not None:
                 self.marker_pub.publish(line_marker)
+
+    def visualise_normal(self,start,normal,marker_id,colour=[0,0,0]):
+        if start is None or normal is None:
+            return
+        
+        mk = MarkerMaker.make_line_marker(start,start+normal,self.id,marker_id=marker_id,colour=colour,frame_id="world")
+        self.marker_pub.publish(mk)
+
+    def visualise_velocity(self):
+        self.visualise_normal(self.pose_3D[self.joints["neck"]],self.velocity,20,[0,1,0])
+
+    '''
+    Smoothing
+    '''
+    def smooth_pose(self):
+        if self.num_poses==self.window:
+            new_pose = []
+            for i in range(self.pose.num_kpts):
+                joint_history = [p for p in self.pose_history[i] if p is not None]
+                if len(joint_history)==0:
+                    new_pose.append(None)
+                elif len(joint_history)==1:
+                    new_pose.append(joint_history[0])
+                else:
+                    joint_history = np.stack(joint_history)
+                    self.smoother.smooth(joint_history.T)
+                    smoothed_pose = self.smoother.smooth_data[:,-1]
+                    new_pose.append(smoothed_pose)
+            self.pose_3D = new_pose
+
+    def smooth_vector(self,vector_history):
+        if len(vector_history)==self.window:
+            vec_hist = [v for v in vector_history if v is not None]
+            if len(vec_hist) == 0:
+                return None
+            elif len(vec_hist)==1:
+                return vec_hist[0]
+            else:
+                vec_hist_arr = np.stack(vec_hist)
+                self.smoother.smooth(vec_hist_arr.T)
+                return self.smoother.smooth_data[:,-1]
+        elif len(vector_history) == 0:
+            return None
+        else:
+            return vector_history[-1]
+        
+    '''
+    Publish
+    '''
+    def publish(self):
+        # Publish skeleton
+        self.skeleton_pub.publish(self.skeleton)
+
+        # Publish Pose
+        pose = PoseArrayUncertain()
+        pose.header.stamp = self.time
+        pose.confidence = self.pose_confidence
+        pose.header.frame_id = "world"
+        poses = []
+        for joint_pose in self.pose_3D:
+            if joint_pose is None:
+                poses.append(GPose())
+            else:
+                this_pose = GPose()
+                this_pose.position.x = joint_pose[0]
+                this_pose.position.y = joint_pose[1]
+                this_pose.position.z = joint_pose[2]
+                poses.append(this_pose)
+        pose.poses = poses
+        self.pose_pub.publish(pose)
+
+        # Publish Velocity
+        velocity = TwistStamped()
+        velocity.header.stamp = self.time
+        if self.velocity is not None:
+            velocity.twist.linear.x = self.velocity[0]
+            velocity.twist.linear.y = self.velocity[1]
+            velocity.twist.linear.z = self.velocity[2]
+        self.vel_pub.publish(velocity)
+
+        # Publish Body Orientation
+        body_normal = Vector3Stamped()
+        body_normal.header.stamp = self.time
+        if self.body_normal is not None:
+            body_normal.vector.x = self.body_normal[0]
+            body_normal.vector.y = self.body_normal[1]
+            body_normal.vector.z = self.body_normal[2]
+        self.body_or_pub.publish(body_normal)
+
+        # Publish Face Orientation
+        face_normal = Vector3Stamped()
+        face_normal.header.stamp = self.time
+        if self.face_normal is not None:
+            face_normal.vector.x = self.face_normal[0]
+            face_normal.vector.y = self.face_normal[1]
+            face_normal.vector.z = self.face_normal[2]
+        self.face_or_pub.publish(face_normal)
+
 
 
     
@@ -195,6 +459,9 @@ class HRIPoseManager:
         if visualise:
             self.marker_pub = rospy.Publisher("/markers",Marker,queue_size=100)
 
+        # Publishers
+        self.body_pub = rospy.Publisher("/humans/bodies/tracked",IdsList,queue_size=1)
+
     def update_camera_model(self,rgb_info,depth_info):
         self.depth_model = PinholeCameraModel()
         self.rgb_model = PinholeCameraModel()
@@ -210,6 +477,15 @@ class HRIPoseManager:
             tf.transformations.quaternion_matrix([quat.x,quat.y,quat.z,quat.w])
         )
         self.inversed_transform = tf.transformations.inverse_matrix(transform)
+
+    def publish_bodies(self,time):
+        tracked = IdsList()
+        bodies = []
+        for id in self.bodies:
+            bodies.append(id)
+        tracked.ids = bodies
+        tracked.header.stamp = time
+        self.body_pub.publish(tracked)
 
     def process_poses(self,poses,time,rgb_image,depth_image):
         bodies_in_pose = []
@@ -244,4 +520,11 @@ class HRIPoseManager:
             if body not in bodies_in_pose and abs(time - self.bodies[body].time) > self.body_timeout:
                 self.bodies[body].close()
                 del self.bodies[body]
+
+        # Now publish the updated body list
+        self.publish_bodies(time)
+
+        # Now publish the bodies
+        for body in self.bodies:
+            self.bodies[body].publish()
 

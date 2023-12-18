@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 class RandomID:
     characters = "abcdefghijklmnopqrstuvwxyz"
@@ -18,3 +19,16 @@ class RandomID:
             return n
         hashed = (n * RandomID.prime_number) % (26 ** 5)
         return RandomID.hash_number(hashed, rounds - 1)
+    
+class VectorHelper:
+    def normalise(v):
+        norm = np.linalg.norm(v)
+        if norm == 0: 
+            return v
+        return v / norm
+    
+    def get_normal(points):
+        t1 = points[1]-points[0]
+        t2 = points[2]-points[0]
+        n = np.cross(t1,t2)
+        return VectorHelper.normalise(n)

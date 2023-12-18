@@ -32,7 +32,8 @@ class PoseEstimationNode:
             half_precision=False,
             rate=20,
             smoothing=True,
-            smoothing_time=2
+            smoothing_time=2,
+            visualise=True
         ):
         # Rate
         self.rate = rospy.Rate(rate)
@@ -48,7 +49,8 @@ class PoseEstimationNode:
         self.opendr_bridge = ROSBridge()
 
         # Pose Manager
-        self.pose_manager = HRIPoseManager(visualise=True,smoothing=smoothing,window=smoothing_time*rate)
+        self.visualise = visualise
+        self.pose_manager = HRIPoseManager(visualise=visualise,smoothing=smoothing,window=smoothing_time*rate)
 
         # Subscribers
         self.rgb_image_sub = Subscriber(rgb_image_topic,Image)
@@ -129,6 +131,11 @@ class PoseEstimationNode:
 
         # Process new poses
         self.pose_manager.process_poses(poses,self.im_time,rgb_image,depth_image)
+
+        # Visualise
+        if self.visualise:
+            for body in self.pose_manager.bodies:
+                self.pose_manager.bodies[body].visualise_pose()
 
     def opendr_pose_estimation(self,rgb_img):
         # Convert sensor_msgs.msg.Image into OpenDR Image

@@ -62,6 +62,9 @@ class MarkerMaker:
             marker.color.g = colour[1]
             marker.color.b = colour[2]
             marker.color.a = 1.0
+            marker.pose.orientation.x = 0
+            marker.pose.orientation.y = 0
+            marker.pose.orientation.z = 0
             marker.pose.orientation.w = 1.0
             marker.pose.position.x = position[0]
             marker.pose.position.y = position[1]
@@ -98,5 +101,13 @@ class MarkerMaker:
             mk.points.append(end_point)
             mk.colors.append(line_color)
             mk.colors.append(line_color)
+
+            mk.pose.orientation.x = 0
+            mk.pose.orientation.y = 0
+            mk.pose.orientation.z = 0
+            mk.pose.orientation.w = 1
+            mk.pose.position.x = 0
+            mk.pose.position.y = 0
+            mk.pose.position.z = 0
 
             return mk
