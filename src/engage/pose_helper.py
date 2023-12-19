@@ -48,6 +48,8 @@ class HRIPoseBody:
                  window=40,
                  marker_pub=None,
                  max_confidence=30,
+                 camera_frame="camera",
+                 world_frame="world"
                 ):
         self.id = id
         self.start_time = time
@@ -56,6 +58,8 @@ class HRIPoseBody:
         self.smoothing = smoothing
         self.window = window
         self.max_confidence = max_confidence
+        self.camera_frame = camera_frame
+        self.world_frame = world_frame
 
         if visualise:
             self.colour = list(np.random.choice(range(256), size=3)/256)
@@ -337,7 +341,7 @@ class HRIPoseBody:
                 self.id,
                 i,
                 colour=self.colour,
-                frame_id="world",
+                frame_id=self.camera_frame,
             )
             if line_marker is not None:
                 self.marker_pub.publish(line_marker)
@@ -346,7 +350,7 @@ class HRIPoseBody:
         if start is None or normal is None:
             return
         
-        mk = MarkerMaker.make_line_marker(start,start+normal,self.id,marker_id=marker_id,colour=colour,frame_id="world")
+        mk = MarkerMaker.make_line_marker(start,start+normal,self.id,marker_id=marker_id,colour=colour,frame_id=self.world_frame)
         self.marker_pub.publish(mk)
 
     def visualise_velocity(self):
@@ -392,13 +396,16 @@ class HRIPoseBody:
     '''
     def publish(self):
         # Publish skeleton
+        for i in range(Pose.num_kpts):
+            if self.skeleton.skeleton[i] is None:
+                self.skeleton.skeleton[i] = NormalizedPointOfInterest2D(-1,-1,0)
         self.skeleton_pub.publish(self.skeleton)
 
         # Publish Pose
         pose = PoseArrayUncertain()
         pose.header.stamp = self.time
         pose.confidence = self.pose_confidence
-        pose.header.frame_id = "world"
+        pose.header.frame_id = self.world_frame
         poses = []
         for joint_pose in self.pose_3D:
             if joint_pose is None:
@@ -444,13 +451,22 @@ class HRIPoseBody:
     
 
 class HRIPoseManager:
-    def __init__(self,body_timeout=0.1,body_timein=0.1,visualise=True,smoothing=True,window=40):
+    def __init__(self,
+                body_timeout=0.1,
+                body_timein=0.1,
+                visualise=True,
+                smoothing=True,
+                window=40,
+                camera_frame="camera",
+                world_frame="world"):
         # Parameters
         self.body_timeout = rospy.Duration(body_timeout)
         self.body_timein = rospy.Duration(body_timein)
         self.visualise = visualise
         self.smoothing = smoothing
         self.window = window
+        self.camera_frame = camera_frame
+        self.world_frame = world_frame
         # Map from pose id to body id
         self.body_ids = {}
         # Dict of all bodies currently tracked
@@ -502,7 +518,9 @@ class HRIPoseManager:
                     visualise=self.visualise,
                     smoothing=self.smoothing,
                     window=self.window,
-                    marker_pub=self.marker_pub
+                    marker_pub=self.marker_pub,
+                    camera_frame=self.camera_frame,
+                    world_frame=self.world_frame
                 )
             self.bodies[self.body_ids[pose.id]].update(
                 pose,

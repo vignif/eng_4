@@ -94,7 +94,7 @@ class MarkerMaker:
             mk.type = Marker.LINE_STRIP
             mk.header.frame_id = frame_id
             mk.ns = body_id
-            mk.lifetime = rospy.Duration(0.1)
+            mk.lifetime = rospy.Duration(0.2)
             mk.action = 0
             mk.scale.x = scale
             mk.points.append(start_point)

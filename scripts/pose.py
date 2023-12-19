@@ -25,6 +25,8 @@ class PoseEstimationNode:
             depth_image_topic,
             rgb_info_topic,
             depth_info_topic,
+            camera_frame="camera",
+            world_frame="map",
             pose_image_topic=None,
             device="cuda",
             num_refinement_stages=2,
@@ -32,7 +34,7 @@ class PoseEstimationNode:
             half_precision=False,
             rate=20,
             smoothing=True,
-            smoothing_time=2,
+            smoothing_time=1,
             visualise=True
         ):
         # Rate
@@ -50,7 +52,12 @@ class PoseEstimationNode:
 
         # Pose Manager
         self.visualise = visualise
-        self.pose_manager = HRIPoseManager(visualise=visualise,smoothing=smoothing,window=smoothing_time*rate)
+        self.pose_manager = HRIPoseManager(
+            visualise=visualise,
+            smoothing=smoothing,
+            window=smoothing_time*rate,
+            camera_frame=camera_frame,
+            world_frame=world_frame)
 
         # Subscribers
         self.rgb_image_sub = Subscriber(rgb_image_topic,Image)
@@ -80,6 +87,8 @@ class PoseEstimationNode:
         # Camera information for projections
         self.rgb_info = None
         self.depth_info = None
+        self.camera_frame = camera_frame
+        self.world_frame = world_frame
 
         # OpenCV Bridge
         self.cv_bridge = CvBridge()
@@ -111,13 +120,15 @@ class PoseEstimationNode:
         self.cam_world_transform.transform.rotation.y = quat[1]
         self.cam_world_transform.transform.rotation.z = quat[2]
         self.cam_world_transform.transform.rotation.w = quat[3]
+        
         self.cam_br.sendTransform(
             trans,
             quat,
             self.im_time,
-            "camera",
-            "world"
+            self.camera_frame,
+            self.world_frame
         )
+        
         self.pose_manager.update_camera_transform(self.cam_world_transform)
 
         
@@ -138,6 +149,7 @@ class PoseEstimationNode:
                 self.pose_manager.bodies[body].visualise_pose()
 
     def opendr_pose_estimation(self,rgb_img):
+        
         # Convert sensor_msgs.msg.Image into OpenDR Image
         image = self.opendr_bridge.from_ros_image(rgb_img, encoding='bgr8')
 
@@ -149,28 +161,36 @@ class PoseEstimationNode:
             image = image.opencv()
             for pose in poses:
                 draw(image, pose)
-            self.opendr_pose_image_pub.publish(self.opendr_bridge.to_ros_image(OpenDRImage(image), encoding='bgr8'))
-        
+            image = self.opendr_bridge.to_ros_image(OpenDRImage(image), encoding='bgr8')
+            self.opendr_pose_image_pub.publish(image)
         # Return
         return poses
 
 
     def run(self):
-        rospy.spin()
+        while not rospy.is_shutdown():
+            self.rate.sleep()
 
 
 if __name__ == "__main__":
+    default_camera = "camera"
+    default_camera_frame = "camera"
+    default_world_frame = "map"
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--rgb_image_topic", help="Topic for rgb image",
-                        type=str, default="/camera/color/image_raw")
+                        type=str, default="/{}/color/image_raw".format(default_camera))
     parser.add_argument("-d", "--depth_image_topic", help="Topic for depth image",
-                        type=str, default="/camera/depth/image_rect_raw")
+                        type=str, default="/{}/depth/image_rect_raw".format(default_camera))
     parser.add_argument("-ii", "--rgb_info_topic", help="Topic for rgb camera info",
-                        type=str, default="/camera/color/camera_info")
+                        type=str, default="/{}/color/camera_info".format(default_camera))
     parser.add_argument("-di", "--depth_info_topic", help="Topic for depth camera info",
-                        type=str, default="/camera/depth/camera_info")
+                        type=str, default="/{}/depth/camera_info".format(default_camera))
     parser.add_argument("-p", "--pose_image_topic", help="Topic for publishing annotated pose images",
                         type=str, default=None)
+    parser.add_argument("--camera_frame", help="Frame of the camera",
+                        type=str, default=default_camera_frame)
+    parser.add_argument("--world_frame", help="Frame of the world",
+                        type=str, default=default_world_frame)
     parser.add_argument("--accelerate", help="Activates some acceleration features (e.g. reducing number of refinement steps)",
                         default=False)
     args = parser.parse_args(rospy.myargv()[1:])
@@ -192,6 +212,8 @@ if __name__ == "__main__":
         rgb_info_topic=args.rgb_info_topic,
         depth_info_topic=args.depth_info_topic,
         pose_image_topic=args.pose_image_topic,
+        camera_frame=args.camera_frame,
+        world_frame=args.world_frame,
         use_stride=use_stride,
         half_precision=half_precision,
         num_refinement_stages=num_refinement_stages
