@@ -6,7 +6,6 @@ import tf
 from engage.engage_helper import HRIEngagementManager
 
 from hri_msgs.msg import IdsList
-from engage.msg import MotionActivity,EngagementLevel,EngagementValue,Group,PoseArrayUncertain
 
 class EngagementNode:
     def __init__(
@@ -67,6 +66,10 @@ class EngagementNode:
         self.engagement_manager.publish_motion()
         self.engagement_manager.publish_groups(group_confidences)
 
+        # Debugging
+        for body in self.engagement_manager.bodies:
+            print("{}'s mutual gaze: {}".format(body,self.engagement_manager.bodies[body].mutual_gaze_robot))
+
         
 
     def run(self):
@@ -87,7 +90,7 @@ if __name__ == "__main__":
     parser.add_argument("--engagement_threshold", help="Threshold over which someone is considered engaged",
                         type=float, default=0.55)
     parser.add_argument("--max_angle", help="Angle over which mutual gaze is 0",
-                        type=float, default=np.pi)
+                        type=float, default=np.pi/2)
     parser.add_argument("--camera_frame", help="Camera Frame",
                         type=str, default="camera")
     parser.add_argument("--world_frame", help="World Frame",

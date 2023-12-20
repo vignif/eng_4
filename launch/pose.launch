@@ -5,8 +5,8 @@
     <arg name="rgb_inf" value="/$(arg cam_name)/color/camera_info"/>
     <arg name="dep_inf" value="/$(arg cam_name)/depth/camera_info"/>
     <arg name="pos_img" value="/opendr/pose_img"/>
-    <arg name="cam_frame" value="head_front_camera_link"/>
-    <arg name="world_frame" value="map"/>
+    <arg name="cam_frame"/>
+    <arg name="world_frame"/>
     
     <node name="pose" pkg="engage" type="pose.py"
         args="-i $(arg rgb_img) -d $(arg dep_img) -ii $(arg rgb_inf) -di $(arg dep_inf) -p $(arg pos_img) 

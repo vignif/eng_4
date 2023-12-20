@@ -341,7 +341,7 @@ class HRIPoseBody:
                 self.id,
                 i,
                 colour=self.colour,
-                frame_id=self.camera_frame,
+                frame_id=self.world_frame,
             )
             if line_marker is not None:
                 self.marker_pub.publish(line_marker)

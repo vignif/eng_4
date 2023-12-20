@@ -9,16 +9,19 @@ pd.options.mode.chained_assignment = None
 from pgmpy.models import BayesianNetwork
 from pgmpy.factors.discrete import TabularCPD
 
-from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,Decision
+from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,Decision,PoseArrayUncertain
 from hri_msgs.msg import IdsList
 from message_filters import ApproximateTimeSynchronizer, Subscriber
+from geometry_msgs.msg import PointStamped
 from engage.bn_utils import bn_predict
 from engage.decision_maker import DecisionMaker,ACTION_NAMES
+from play_motion_msgs.msg import PlayMotionActionGoal
+from engage.pose_helper import HRIPoseBody
 
 CSV_DIR = "~/catkin_ws/src/hriri/logging/decision_csvs/"
 
 RATE = 1
-DECISION_LOCK = 0 # If a decision other than "nothing" is taken, wait this long
+DECISION_LOCK = 5 # If a decision other than "nothing" is taken, wait this long
 TIME_SLOP = 0.1
 
 class Body:
@@ -29,6 +32,8 @@ class Body:
         # Subscribers
         self.engagement_level_subscriber = Subscriber(body_topic+"engagement_status",EngagementLevel)
         self.activity_subscriber = Subscriber(body_topic+"activity",MotionActivity)
+
+        self.position_subscriber = rospy.Subscriber("/humans/bodies/{}/poses".format(id),PoseArrayUncertain,self.update_position)
 
         time_slop = TIME_SLOP
         self.synch_sub = ApproximateTimeSynchronizer(
@@ -46,6 +51,7 @@ class Body:
         self.engagement_level_confidence = 0
         self.activity = MotionActivity.NOTHING
         self.activity_confidence = 0
+        self.position = None
 
     def __del__(self):
         self.close()
@@ -53,6 +59,7 @@ class Body:
     def close(self):
         self.engagement_level_subscriber.sub.unregister()
         self.activity_subscriber.sub.unregister()
+        self.position_subscriber.unregister()
 
 
     def update_body(self,engagement_level,activity):
@@ -60,6 +67,10 @@ class Body:
         self.engagement_level_confidence = engagement_level.confidence
         self.activity = activity.activity
         self.activity_confidence = activity.confidence
+
+    def update_position(self,pose):
+        if pose.poses[HRIPoseBody.joints["nose"]] is not None:
+            self.position = pose.poses[HRIPoseBody.joints["nose"]]
 
 
 class DecisionMakingNode:
@@ -81,6 +92,10 @@ class DecisionMakingNode:
         self.engagement_value_subscriber = rospy.Subscriber("/humans/interactions/engagements",EngagementValue,self.update_engagements)
         self.group_subscriber = rospy.Subscriber("/humans/interactions/groups",Group,self.update_groups)
 
+        # Publishers
+        self.motion_action_publisher = rospy.Publisher("/play_motion/goal",PlayMotionActionGoal,queue_size=1)
+        self.gaze_action_publisher = rospy.Publisher("/look_at",PointStamped,queue_size=1)
+
         self.body_time = None
         self.dec_time = None
         self.decision_time = None
@@ -94,8 +109,7 @@ class DecisionMakingNode:
 
         self.decision_maker = DecisionMaker()
 
-        # Debugging
-        self.action_counts = {}
+
 
     def __del__(self):
         self.close()
@@ -162,14 +176,6 @@ class DecisionMakingNode:
         body_df = self.compile_body_df()
         body_df,target,action = self.decision_maker.decide(body_df,self.waiting)
 
-        # Debugging
-        if ACTION_NAMES[action] in self.action_counts:
-            self.action_counts[ACTION_NAMES[action]] += 1
-        else:
-            self.action_counts[ACTION_NAMES[action]] = 1
-
-        #print(self.action_counts)
-
         # Compile information
         if self.saving:
             if self.decision_table is None:
@@ -181,9 +187,40 @@ class DecisionMakingNode:
         if action != Decision.NOTHING and action != Decision.WAIT:
             self.unlock_time = rospy.Time.now() + rospy.Duration(DECISION_LOCK)
             print("Executing action {} with target {}".format(ACTION_NAMES[action],target))
+        self.execute_action(action,target)
 
         # Unlock
         self.lock = False
+
+    '''
+    Robot actions
+    '''
+
+    def execute_action(self,action,target):
+        # TODO: Fix all of this
+        if action == Decision.NOTHING or action == Decision.WAIT:
+            return None
+        elif action == Decision.ELICIT_GENERAL:
+            motion = "wave"
+        elif action == Decision.ELICIT_TARGET:
+            motion = "bow"
+        else:
+            motion = "flying"
+        motion_msg = PlayMotionActionGoal()
+        motion_msg.goal.motion_name = motion
+        self.motion_action_publisher.publish(motion_msg)
+
+        if target is not None:
+            target_body = self.bodies[target]
+            if target_body.position is not None:
+                target_pos = PointStamped()
+                target_pos.header.frame_id = "sellion_link"
+                target_pos.point.x = target_body.position.position.x
+                target_pos.point.y = target_body.position.position.y
+                target_pos.point.z = target_body.position.position.z
+                self.gaze_action_publisher.publish(target_pos)
+
+        
 
     '''
     
@@ -362,6 +399,6 @@ if __name__ == "__main__":
         exp_name = rospy.get_param("exp_name")
     except:
         exp_name = "Test"
-    dmn = DecisionMakingNode(saving=True,exp_name=exp_name)
+    dmn = DecisionMakingNode(saving=False,exp_name=exp_name)
     dmn.run()
 

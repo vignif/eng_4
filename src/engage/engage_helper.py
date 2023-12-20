@@ -84,6 +84,11 @@ class HRIEngageBody:
         return self.id
 
     def close(self):
+        # Unregister subscribers
+        self.pose_sub.sub.unregister()
+        self.vel_sub.sub.unregister()
+        self.body_or_sub.sub.unregister()
+        self.face_or_sub.sub.unregister()
         # Unregister publishers
         self.engagement_publisher.unregister()
         self.activity_publisher.unregister()
@@ -99,7 +104,12 @@ class HRIEngageBody:
                 self.pose.append(None)
             else:
                 self.pose.append(VectorHelper.obj_to_vec(pt))
-        self.position = self.pose[HRIPoseBody.joints["neck"]]
+        if self.pose[HRIPoseBody.joints["neck"]] is not None:
+            self.position = self.pose[HRIPoseBody.joints["neck"]]
+        elif self.pose[HRIPoseBody.joints["nose"]] is not None:
+            self.position = self.pose[HRIPoseBody.joints["nose"]]
+        else:
+            self.position = None
 
         # Update velocity
         self.velocity = VectorHelper.obj_to_vec(vel_msg.twist.linear)
@@ -257,6 +267,9 @@ class HRIEngagementManager:
         self.engagement_value_publisher = rospy.Publisher("/humans/interactions/engagements",EngagementValue,queue_size=100)
         self.group_publisher = rospy.Publisher("/humans/interactions/groups",Group,queue_size=100)
 
+        # Debug
+        self.num_bodies_added = 0
+
     def update_robot_position(self,trans,rot):
         robot_position_camera = np.array([0,0,0,1])
         robot_orientation_camera = np.array([-1,0,0,1])
@@ -286,6 +299,7 @@ class HRIEngagementManager:
         # Add new ids
         ids_to_add = list(tracked_ids - managed_ids)
         for id in ids_to_add:
+            self.num_bodies_added += 1
             self.bodies[id] = HRIEngageBody(
                 id,
                 time,
