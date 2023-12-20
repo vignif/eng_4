@@ -478,6 +478,11 @@ class HRIPoseManager:
         # Publishers
         self.body_pub = rospy.Publisher("/humans/bodies/tracked",IdsList,queue_size=1)
 
+        # Initial Camera Projection
+        trans = [0,0,0]
+        rot = [0,0,0]
+        self.update_camera_transform(trans,rot)
+
     def update_camera_model(self,rgb_info,depth_info):
         self.depth_model = PinholeCameraModel()
         self.rgb_model = PinholeCameraModel()
@@ -485,12 +490,10 @@ class HRIPoseManager:
         self.depth_model.fromCameraInfo(depth_info)
         self.rgb_model.fromCameraInfo(rgb_info)
 
-    def update_camera_transform(self,cam_transform):
-        trans = cam_transform.transform.translation
-        quat = cam_transform.transform.rotation
+    def update_camera_transform(self,trans,rot):
         transform = tf.transformations.concatenate_matrices(
-            tf.transformations.translation_matrix([trans.x,trans.y,trans.z]), 
-            tf.transformations.quaternion_matrix([quat.x,quat.y,quat.z,quat.w])
+            tf.transformations.translation_matrix(trans), 
+            tf.transformations.quaternion_matrix(rot)
         )
         self.inversed_transform = tf.transformations.inverse_matrix(transform)
 

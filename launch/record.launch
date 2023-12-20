@@ -1,0 +1,9 @@
+<launch>
+    <arg name="cam_bag"/>
+    <arg name="cam_name"/>
+    <arg name="bag_dir" value="/home/tamlin/engage/rosbags"/>
+
+    <node pkg="rosbag" type="record" name="rosbag_cam"
+        args="-O $(arg bag_dir)/$(arg cam_bag).bag /$(arg cam_name)/color/image_raw /$(arg cam_name)/depth/image_rect_raw /$(arg cam_name)/color/camera_info /$(arg cam_name)/depth/camera_info"
+        />
+</launch>

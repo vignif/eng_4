@@ -84,6 +84,9 @@ class PoseEstimationNode:
         if pose_image_topic is not None:
             self.opendr_pose_image_pub = rospy.Publisher(pose_image_topic,Image,queue_size=1)
 
+        # Transform Listener
+        self.listener = tf.TransformListener()
+
         # Camera information for projections
         self.rgb_info = None
         self.depth_info = None
@@ -104,34 +107,7 @@ class PoseEstimationNode:
         if self.rgb_info is None:
             self.rgb_info = rgb_info
             self.depth_info = depth_info
-            self.pose_manager.update_camera_model(rgb_info,depth_info)
-
-        # Broadcast the camera at position 0,0,0 rotation 0,0,0 # TODO replace with the actual thing
-        self.cam_world_transform = TransformStamped()
-        self.cam_world_transform.header.stamp = self.im_time
-        trans = (0,0,0)
-        self.cam_world_transform.transform.translation = Vector3()
-        self.cam_world_transform.transform.translation.x = trans[0]
-        self.cam_world_transform.transform.translation.y = trans[1]
-        self.cam_world_transform.transform.translation.z = trans[2]
-        self.cam_world_transform.transform.rotation = Quaternion()
-        quat = tf.transformations.quaternion_from_euler(0, 0, 0)
-        self.cam_world_transform.transform.rotation.x = quat[0]
-        self.cam_world_transform.transform.rotation.y = quat[1]
-        self.cam_world_transform.transform.rotation.z = quat[2]
-        self.cam_world_transform.transform.rotation.w = quat[3]
-        
-        self.cam_br.sendTransform(
-            trans,
-            quat,
-            self.im_time,
-            self.camera_frame,
-            self.world_frame
-        )
-        
-        self.pose_manager.update_camera_transform(self.cam_world_transform)
-
-        
+            self.pose_manager.update_camera_model(rgb_info,depth_info)        
 
         # OpenCV
         rgb_image = cv2.cvtColor(self.cv_bridge.imgmsg_to_cv2(rgb_img), cv2.COLOR_BGR2RGB)
@@ -162,6 +138,7 @@ class PoseEstimationNode:
             for pose in poses:
                 draw(image, pose)
             image = self.opendr_bridge.to_ros_image(OpenDRImage(image), encoding='bgr8')
+            image.header.stamp = self.im_time
             self.opendr_pose_image_pub.publish(image)
         # Return
         return poses
@@ -169,12 +146,18 @@ class PoseEstimationNode:
 
     def run(self):
         while not rospy.is_shutdown():
+            # Listen for transform updates from the camera
+            try:
+                (trans,rot) = self.listener.lookupTransform(self.camera_frame,self.world_frame,rospy.Time(0))
+                self.pose_manager.update_camera_transform(trans,rot)
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+                pass
             self.rate.sleep()
 
 
 if __name__ == "__main__":
-    default_camera = "camera"
-    default_camera_frame = "camera"
+    default_camera = "head_front_camera"
+    default_camera_frame = "head_front_camera_link"
     default_world_frame = "map"
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--rgb_image_topic", help="Topic for rgb image",
@@ -204,7 +187,11 @@ if __name__ == "__main__":
         half_precision=False
         num_refinement_stages=2
 
+    
+
     rospy.init_node("HRIPose", anonymous=True)
+
+    print("Listening for images on {}".format(args.rgb_image_topic))
     
     pose_node = PoseEstimationNode(
         rgb_image_topic=args.rgb_image_topic,
