@@ -151,6 +151,7 @@ class DecisionMaker:
         else:
             # Robot not in a group, must try grab someone's attention
             potential_targets = people_df[people_df['Score'] == people_df['Score'].max()]
+            print(people_df['Score'])
             valid_targets = potential_targets.loc[potential_targets["Score"]>score_threshold]
             if valid_targets.empty:
                 action = Decision.ELICIT_GENERAL
@@ -216,6 +217,7 @@ class DecisionMaker:
         if TEL==EngagementLevel.ENGAGED or TEL==EngagementLevel.ENGAGING:
             # Person is engaged or engaging
             score += engagement_weight*(ELC/max_float_bucket)
+
         
         if TA==Activity.WALKING_TOWARDS:
             # person is walking towards the robot
