@@ -175,7 +175,7 @@ catkin_install_python(PROGRAMS
 )
 
 catkin_install_python(PROGRAMS
-  scripts/decision.py
+  scripts/decide.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

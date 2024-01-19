@@ -1,0 +1,34 @@
+<launch>
+    <arg name="cam_name"/>
+    <arg name="exp"/>
+    <arg name="bag_dir" value="/home/tamlin/engage/rosbags"/>
+    <arg name="rgb_img" value="/$(arg cam_name)/color/image_raw"/>
+    <arg name="dep_img" value="/$(arg cam_name)/depth/image_rect_raw"/>
+    <arg name="rgb_inf" value="/$(arg cam_name)/color/camera_info"/>
+    <arg name="dep_inf" value="/$(arg cam_name)/depth/camera_info"/>
+    <arg name="pos_img" value="/opendr/pose_img"/>
+    <arg name="cam_frame" value="sellion_link"/>
+    <arg name="world_frame" value="map"/>
+    
+    <param name="exp_name" type="str" value="$(arg exp)"/>
+
+    <node pkg="rosbag" type="play" name="rosbag_play" output="screen" args="$(arg bag_dir)/$(arg exp).bag"/>
+
+    <!-- As more topics are added to the system, feel free to update the args for this -->
+    <node pkg="rosbag" type="record" name="rosbag_record"
+        args="-O $(arg bag_dir)/logbags/$(arg exp).bag $(arg pos_img) -e '/humans/bodies/(.*)' /humans/interactions/engagements /humans/interactions/groups /hri_engage_decisions"
+        />
+
+    <node name="pose" pkg="engage" type="pose.py"
+        args="-i $(arg rgb_img) -d $(arg dep_img) -ii $(arg rgb_inf) -di $(arg dep_inf) -p $(arg pos_img) 
+        --camera_frame $(arg cam_frame) --world_frame $(arg world_frame)"
+        />
+
+    <node name="engagement" pkg="engage" type="engagement.py"
+        args="--camera_frame $(arg cam_frame) --world_frame $(arg world_frame)"
+        />
+
+    <node name="decision" pkg="engage" type="decide.py"
+        args=""
+        />
+</launch>
