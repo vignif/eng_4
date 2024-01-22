@@ -8,6 +8,8 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationTool
 import cv2
 import numpy as np
 
+from engage.bagreader import Bagreader
+
 class Visualiser:
     def __init__(self,
                  exp,
@@ -33,6 +35,7 @@ class Visualiser:
 
         # Initialise rosbag
         self.init_bag(exp)
+
 
         # Setup GUI
         self.button_height = button_height
@@ -78,7 +81,7 @@ class Visualiser:
         self.figure_canvas.get_tk_widget().destroy()
         self.graph_dropdown.destroy()
 
-        plt.close(self.graph_fig)
+        #plt.close(self.graph_fig)
 
     '''
     SETUP
@@ -91,6 +94,9 @@ class Visualiser:
 
         self.load_video()
         self.root.title(exp)
+
+        # Set up bagreader
+        self.bagreader = Bagreader(self.cam_bag,self.log_bag)
 
     def load_video(self):
         self.msgs = []
@@ -154,18 +160,19 @@ class Visualiser:
         self.init_bag(exp)
         self.clear_canvases()
         self.create_graph()
+
+        # Video player
         self.update_frame(0)
         self.create_video_slider()
 
-    def create_graph(self,default_graph="engagement_value_with_robot"):
+    def create_graph(self,default_graph="Decision"):
         # Get dropdown list
-        self.graph_list = ["A","B","C"]
+        self.graph_list = self.bagreader.graph_choice()
 
-        self.graph_fig, self.graph_axes = plt.subplots()
-        self.graph_axes = [self.graph_axes]
-        plt.plot([self.times[0].secs + self.times[0].nsecs/1000000000,self.times[-1].secs + self.times[-1].nsecs/1000000000],[1,1])
+        self.graph_fig, self.graph_axes = self.bagreader.plot(default_graph)
+        plt.tight_layout()
 
-        curr_time = self.times[0].secs + self.times[0].nsecs/1000000000
+        curr_time = self.stamps[0].secs + self.stamps[0].nsecs/1000000000
         self.graph_axes[0].axvline(x=curr_time)
 
         
@@ -185,13 +192,12 @@ class Visualiser:
         
         graph_choice = self.root.getvar(n)
         
-        self.graph_fig, self.graph_axes = plt.subplots()
-        self.graph_axes = [self.graph_axes]
-        plt.plot([self.times[0].secs + self.times[0].nsecs/1000000000,self.times[-1].secs + self.times[-1].nsecs/1000000000])
+        self.graph_fig, self.graph_axes = self.bagreader.plot(graph_choice)
+        plt.tight_layout()
 
         self.figure_canvas.get_tk_widget().destroy()
         self.figure_canvas = FigureCanvasTkAgg(self.graph_fig, master=self.graph_canvas)
-        curr_time = self.times[self.curr_frame].secs + self.times[self.curr_frame].nsecs/1000000000
+        curr_time = self.stamps[self.curr_frame].secs + self.stamps[self.curr_frame].nsecs/1000000000
         for ax in self.graph_axes:
             ax.axvline(x=curr_time,color='r')
         self.figure_canvas.draw()
@@ -208,7 +214,7 @@ class Visualiser:
         self.video_canvas.image = photo
 
         # Update graph
-        curr_time = self.times[self.curr_frame].secs + self.times[self.curr_frame].nsecs/1000000000
+        curr_time = self.stamps[self.curr_frame].secs + self.stamps[self.curr_frame].nsecs/1000000000
         for ax in self.graph_axes:
             ax.get_lines().pop().remove()
             ax.axvline(x=curr_time,color='r')
@@ -216,7 +222,34 @@ class Visualiser:
 
     def process_image(self,img):
         img = img.copy()
-        # TODO: Add blurring and label positions
+        if self.display_ids:
+            label_positions = self.bagreader.get_face_locations(self.stamps[self.curr_frame].to_sec())
+            for id in label_positions:
+                if label_positions[id] is not None:
+                    org = (int(img.shape[1]*label_positions[id][0]),int(img.shape[0]*label_positions[id][1]))
+                    colour = list(self.bagreader.colours[id])
+                    col = colour.copy()
+                    col[0] = colour[2]*255
+                    col[1] = colour[1]*255
+                    col[2] = colour[0]*255
+                    
+                    img = cv2.putText(img, id, org, cv2.FONT_HERSHEY_SIMPLEX ,  1, col, 2, cv2.LINE_AA)
+        if self.blur_faces:
+            face_positions = self.bagreader.get_face_locations(self.stamps[self.curr_frame].to_sec())
+            for face in face_positions:
+                if face_positions[face] is None:
+                    continue
+                square_size = 50
+                org = (int(img.shape[1]*face_positions[face][0]),int(img.shape[0]*face_positions[face][1]))
+                x = org[0]
+                y = org[1]
+                ya = max(0,y-square_size)
+                yb = min(img.shape[0],y + square_size)
+                xa = max(0,x-square_size)
+                xb = min(img.shape[1],x + square_size)
+                face_roi = img[ya:yb,xa:xb]
+                blurred = cv2.medianBlur(face_roi, 99)
+                img[ya:yb, xa:xb] = blurred 
 
         return img
     
@@ -267,16 +300,10 @@ class Visualiser:
         else:
             self.pose_button.config(text="Show Skeleton")
 
-        old_time = self.times[self.curr_frame]#.secs + self.times[self.curr_frame].nsecs/1000000000
-        old_times = self.times
+        old_time = self.stamps[self.curr_frame]
         self.load_video()
-        print(self.curr_frame)
-        self.curr_frame = np.argmin(np.abs(np.array(self.times)-old_time)) # Frames don't correspond between image and pose_image
-        print(min(enumerate(self.times), key=lambda x: abs(x[1]-old_time)))
-        print(self.curr_frame)
-        print(self.times)
+        self.curr_frame = np.argmin(np.abs(np.array(self.stamps)-old_time)) # Frames don't correspond between image and pose_image
         self.update_frame(self.curr_frame)
-        print((self.times[self.curr_frame]-old_time)/1000000000)
 
     def toggle_ids(self):
         self.display_ids = not self.display_ids
@@ -297,7 +324,7 @@ class Visualiser:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Visualise rosbag for HRI engage experiments")
     parser.add_argument("--exp", help="Name of rosbag (without .bag)", default="Approach_0")
-    parser.add_argument("--bag_dir", help="Directory of bag file", default="/home/tamlin/engage/rosbags/")
+    parser.add_argument("--bag_dir", help="Directory of bag file", default="/home/tamlin/engage/rosbags")
     parser.add_argument("--image_topic", help="Image topic.", default="/camera/color/image_raw")
     parser.add_argument("--pose_image_topic", help="Pose image topic.", default="/opendr/pose_img")
 

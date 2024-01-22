@@ -1,6 +1,7 @@
 import rospy
 import numpy as np
 import argparse
+import pandas as pd
 
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,Decision,PoseArrayUncertain
@@ -77,6 +78,8 @@ class DecisionNode:
     ):
         # Rate
         self.rate = rospy.Rate(rate)
+        self.last_decision_time = None
+        self.lock = False
 
         # Decision-Maker
         self.dm = self.decision_makers[decision_maker](**kwargs)
@@ -107,6 +110,10 @@ class DecisionNode:
     CALLBACKS
     '''
     def manage_bodies(self,tracked_msg):
+        if self.lock:
+            return
+        self.lock = True
+
         self.body_time = tracked_msg.header.stamp
         self.dec_time = rospy.Time.now()
         body_list = tracked_msg.ids
@@ -141,13 +148,22 @@ class DecisionNode:
             del self.pose_confidences[id]
 
         # Make decision
-        target,action,time = self.dm.decide(self)
+        # TODO: refactor the whole thing to use an observation class rather than a pandas dataframe being passed around
+        decision_vars = self.compile_decision_vars()
+        body_df = self.compile_body_df() # Create a body dataframe
+        target,action = self.dm.decide(body_df,decision_vars)
+
+        if action != Decision.NOTHING and action != Decision.WAIT:
+            self.last_decision_time = self.body_time
 
         # Publish decision
-        self.publish_decision(target,action,time)
+        self.publish_decision(target,action,self.body_time)
 
         # Control robot
-        self.robot_controller.execute_command(target,action,self)
+        self.robot_controller.execute_command(target,action,self.bodies)
+
+        # Unlock
+        self.lock = False
 
     def update_engagements(self,engagement_value):
         self.ev_time = engagement_value.header.stamp
@@ -171,6 +187,90 @@ class DecisionNode:
             if id in self.groups:
                 self.groups[id] = group.group_id
                 self.group_confidences[id] = conf
+
+    '''
+    DATAFRAME
+    '''
+    def compile_decision_vars(self):
+        decision_vars = {}
+        if self.last_decision_time is None or self.body_time - self.last_decision_time > self.dm.wait_time:
+            decision_vars["Waiting"] = False
+        else:
+            decision_vars["Waiting"] = True
+        return decision_vars
+
+    def compile_body_df(self):
+        headers = ["Body Time","Dec Time","Body","Group","G","GC","A","AC","EL","ELC","MG","D","EV","PC","GWR"]
+        table = []
+        for id in self.bodies:
+            if self.bodies[id].engagement_level is None or self.bodies[id].activity is None or self.distances[id] is None or self.groups[id] is None:
+                continue
+            body_row = [
+                self.body_time,
+                self.dec_time,
+                id,
+                self.groups[id],
+                self.in_group(id),
+                self.float_bucket(self.group_confidences[id]),
+                self.bodies[id].activity,
+                self.float_bucket(self.bodies[id].activity_confidence),
+                self.bodies[id].engagement_level,
+                self.float_bucket(self.bodies[id].engagement_level_confidence),
+                self.float_bucket(self.mutual_gazes[id]),
+                self.distance_bucket(self.distances[id]),
+                self.float_bucket(self.engagements[id]),
+                self.float_bucket(self.pose_confidences[id]),
+                self.groups[id] == self.groups["ROBOT"],
+            ]
+            table.append(body_row)
+        # ROBOT
+        if decision_node.group_confidences["ROBOT"] is not None:
+            table.append([
+                self.body_time,
+                self.dec_time,
+                "ROBOT",
+                self.groups["ROBOT"],
+                self.in_group("ROBOT"),
+                self.float_bucket(self.group_confidences["ROBOT"]),
+                0,
+                3,
+                0,
+                3,
+                0,
+                0,
+                0,
+                1,
+                True
+                ])
+        return pd.DataFrame(table,columns=headers)
+
+    def in_group(self,id):
+        # True if id's group > 1 person
+        same_group = [k for k,v in self.groups.items() if v == self.groups[id]]
+        return len(same_group)>1
+
+    def float_bucket(self,value):
+        if value < 0.25:
+            return 0
+        elif value < 0.5:
+            return 1
+        elif value < 0.75:
+            return 2
+        else:
+            return 3
+
+    def distance_bucket(self,distance):
+        if distance <= 3:
+            discretised_distance = round(distance * 2) / 2
+        else:
+            discretised_distance = round(distance)
+
+        if discretised_distance == 0.0:
+            discretised_distance = 0.1
+        elif discretised_distance > 8:
+            discretised_distance = 9
+
+        return discretised_distance
 
     '''
     PUBLISHING

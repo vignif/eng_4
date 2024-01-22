@@ -13,7 +13,7 @@ class SimpleARIController:
         self.gaze_action_publisher = rospy.Publisher("/look_at",PointStamped,queue_size=1)
         self.tts_publisher = rospy.Publisher("/tts/goal",TtsActionGoal,queue_size=1)
 
-    def execute_command(self,target,action,decision_node):
+    def execute_command(self,target,action,bodies):
         if action == Decision.NOTHING or action == Decision.WAIT:
             return None
         elif action == Decision.ELICIT_GENERAL:
@@ -27,7 +27,7 @@ class SimpleARIController:
         self.motion_action_publisher.publish(motion_msg)
 
         if target is not None:
-            target_body = decision_node.bodies[target]
+            target_body = bodies[target]
             if target_body.position is not None:
                 target_pos = PointStamped()
                 target_pos.header.frame_id = self.world_frame
