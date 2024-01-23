@@ -4,8 +4,10 @@ import seaborn as sns
 import rospy
 import numpy as np
 import colorcet as cc
+import cv2
 
 from engage.message_helper import MessageHelper
+from engage.marker_visualisation import MarkerMaker
 from hri_msgs.msg import Skeleton2D
 
 CMAP = plt.get_cmap("tab10")
@@ -50,11 +52,13 @@ class Bagreader:
         # Prune bodies
         self.pruned_bodies = self.prune_bodies(pruning_threshold)
 
-        # Locations
-        self.locations,self.location_times = self.get_locations(self.pruned_bodies)
-
         # Colours
         self.colours = self.set_colours()
+
+        # Locations
+        self.locations,self.location_times,self.poses = self.get_locations(self.pruned_bodies)
+
+        
 
     def read_bodies(self):
         # Create list of bodies in the rosbag
@@ -79,15 +83,17 @@ class Bagreader:
     
     def get_locations(self,bodies):
         locations = {body:[] for body in bodies}
+        poses = {body:[] for body in bodies}
         times = {body:[] for body in bodies}
         for body in bodies:
             for _,msg,_ in self.log_bag.read_messages(topics=["/humans/bodies/{}/skeleton2d".format(body)]):
                 times[body].append(msg.header.stamp.to_sec())
+                poses[body].append(msg.skeleton)
                 label_keypoint = (msg.skeleton[Skeleton2D.NOSE].x,msg.skeleton[Skeleton2D.NOSE].y)
                 if label_keypoint == (-1,-1):
                     label_keypoint = (msg.skeleton[Skeleton2D.NECK].x,msg.skeleton[Skeleton2D.NECK].y)
                 locations[body].append(label_keypoint)
-        return locations,times
+        return locations,times,poses
     
     def graph_choice(self):
         return self.graph_choices
@@ -350,6 +356,48 @@ class Bagreader:
             else:
                 locations[body] = None
         return locations
+    
+    '''
+    DRAW
+    '''
+    def draw_poses(self,cv_img,curr_time):
+        for body in self.poses:
+            nearest_pose_index = self.nearest_time_within_threshold(curr_time.to_sec(),self.location_times[body])
+            if nearest_pose_index is not None:
+                nearest_pose = self.poses[body][nearest_pose_index]
+                cv_img = self.draw_pose_on_image(cv_img,nearest_pose,body)
+        return cv_img
+    
+    def draw_pose_on_image(self,cv_img,pose,body,thickness=2):
+        col = 255*np.array(self.colours[body])
+        for skeleton_pair in MarkerMaker.skeleton_pairs_indices:
+            j0 = pose[skeleton_pair[0]]
+            j1 = pose[skeleton_pair[1]]
+
+            if (j0.x == -1 and j0.y == -1) or (j1.x == -1 and j1.y == -1):
+                continue
+
+            p0 = (int(cv_img.shape[1]*j0.x),int(cv_img.shape[0]*j0.y))
+            p1 = (int(cv_img.shape[1]*j1.x),int(cv_img.shape[0]*j1.y))
+            cv_img = cv2.line(cv_img, p0, p1, col, thickness)
+
+        # Draw points for the ears even if the nose is not drawn
+        points_to_draw = []
+        if pose[Skeleton2D.NOSE].x == -1 and pose[Skeleton2D.NOSE].y == -1:
+            if not (pose[Skeleton2D.LEFT_EAR].x == -1 and pose[Skeleton2D.LEFT_EAR].y == -1):
+                point = (int(cv_img.shape[1]*pose[Skeleton2D.LEFT_EAR].x),int(cv_img.shape[0]*pose[Skeleton2D.LEFT_EAR].y))
+                points_to_draw.append(point)
+            if not (pose[Skeleton2D.RIGHT_EAR].x == -1 and pose[Skeleton2D.RIGHT_EAR].y == -1):
+                point = (int(cv_img.shape[1]*pose[Skeleton2D.RIGHT_EAR].x),int(cv_img.shape[0]*pose[Skeleton2D.RIGHT_EAR].y))
+                points_to_draw.append(point)
+
+        for p in points_to_draw:
+            cv_img = cv2.circle(cv_img, p, 1, col, thickness)
+
+        return cv_img
+
+
+
 
     '''
     UTIL

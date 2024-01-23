@@ -30,6 +30,8 @@ class Visualiser:
         self.display_ids = True
         self.blur_faces = False
 
+        self.use_tracked = False
+
         # Create TK root
         self.root = tk.Tk()
 
@@ -89,7 +91,10 @@ class Visualiser:
     def init_bag(self,exp):
         self.exp = exp
         
-        self.cam_bag = rosbag.Bag("{}/{}.bag".format(self.bag_dir,self.exp))
+        try:
+            self.cam_bag = rosbag.Bag("{}/{}.bag".format(self.bag_dir,self.exp))
+        except:
+            self.cam_bag = None
         self.log_bag = rosbag.Bag("{}/{}.bag".format(self.log_bag_dir,self.exp))
 
         self.load_video()
@@ -107,15 +112,42 @@ class Visualiser:
                 self.msgs.append(msg)
                 self.times.append(t)
                 self.stamps.append(msg.header.stamp) # Use stamp time as that is what is used to synch everything
+
+            
+
+            if len(self.msgs) == 0:
+                # No annotated pose images, must draw poses instead
+                self.use_tracked = True
+                self.read_tracked_messages()
+            else:
+                self.use_tracked = False
+
+                self.img_height = self.msgs[0].height
+                self.img_width = self.msgs[0].width
         else:
-            for _,msg,t in self.cam_bag.read_messages(topics=[self.image_topic]):
-                self.msgs.append(msg)
-                self.times.append(t)
-                self.stamps.append(msg.header.stamp) # Use stamp time as that is what is used to synch everything 
-        print(len(self.msgs),len(self.times),len(self.stamps))
-        self.img_height = self.msgs[0].height
-        self.img_width = self.msgs[0].width
+            if self.cam_bag is not None:
+                self.use_tracked = False
+                for _,msg,t in self.cam_bag.read_messages(topics=[self.image_topic]):
+                    self.msgs.append(msg)
+                    self.times.append(t)
+                    self.stamps.append(msg.header.stamp) # Use stamp time as that is what is used to synch everything
+
+                self.img_height = self.msgs[0].height
+                self.img_width = self.msgs[0].width
+            else:
+                self.use_tracked = True
+                self.read_tracked_messages()
+
+        
         self.num_frames = len(self.times)
+
+    def read_tracked_messages(self):
+        for _,msg,t in self.log_bag.read_messages(topics=["/humans/bodies/tracked"]):
+            self.msgs.append(None)
+            self.times.append(t)
+            self.stamps.append(msg.header.stamp)
+        self.img_height = 480
+        self.img_width = 640
 
     def create_header(self,exp):
         # Create list
@@ -206,9 +238,16 @@ class Visualiser:
 
     def update_frame(self,frame_index):
         self.curr_frame = int(frame_index)
-        self.cv_img = self.bridge.imgmsg_to_cv2(self.msgs[self.curr_frame], desired_encoding="passthrough")
-        if not self.pose_video:
-            self.cv_img = cv2.cvtColor(self.cv_img, cv2.COLOR_BGR2RGB)
+        
+        if self.use_tracked:
+            self.cv_img = np.zeros((self.img_height,self.img_width,3), np.uint8)
+            if self.pose_video:
+                self.cv_img = self.bagreader.draw_poses(self.cv_img,self.stamps[self.curr_frame])
+                self.cv_img = cv2.cvtColor(self.cv_img, cv2.COLOR_BGR2RGB)
+        else:
+            self.cv_img = self.bridge.imgmsg_to_cv2(self.msgs[self.curr_frame], desired_encoding="passthrough")
+            if not self.pose_video:
+                self.cv_img = cv2.cvtColor(self.cv_img, cv2.COLOR_BGR2RGB)
         self.cv_img = self.process_image(self.cv_img)
         photo = self.photo_image(self.cv_img)
         self.video_canvas.create_image(0, 0, image=photo, anchor=tk.NW)
