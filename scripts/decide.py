@@ -74,18 +74,22 @@ class DecisionNode:
             decision_maker="simple_decision_maker",
             robot_controller="simple__ari_controller",
             rate=20,
+            robot_command=True,
             **kwargs
     ):
         # Rate
         self.rate = rospy.Rate(rate)
         self.last_decision_time = None
         self.lock = False
+        
 
         # Decision-Maker
         self.dm = self.decision_makers[decision_maker](**kwargs)
 
         # Robot Controller
-        self.robot_controller = self.robot_controllers[robot_controller]()
+        self.robot_command = robot_command
+        if robot_command:
+            self.robot_controller = self.robot_controllers[robot_controller]()
 
         # Subscribers
         self.body_subscriber = rospy.Subscriber("/humans/bodies/tracked",IdsList,self.manage_bodies)
@@ -160,7 +164,8 @@ class DecisionNode:
         self.publish_decision(target,action,self.body_time)
 
         # Control robot
-        self.robot_controller.execute_command(target,action,self.bodies)
+        if self.robot_command:
+            self.robot_controller.execute_command(target,action,self.bodies)
 
         # Unlock
         self.lock = False
@@ -296,13 +301,20 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--decision_maker", help="Which decision maker will be used",
                         type=str, default="simple_decision_maker")
     parser.add_argument("--wait_time", help="Fixed time to wait between decisions",
-                        type=float, default=0)
+                        type=float, default=5)
+    parser.add_argument("--robot", help="If true, will send commands to the robot",
+                        type=str, default="True")
     args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("HRIDecide", anonymous=True)
+
+    robot = True
+    if args.robot in ["False","false","f","F","0"]:
+        robot = False
     
     decision_node = DecisionNode(
         decision_maker = args.decision_maker,
-        wait_time = args.wait_time
+        wait_time = args.wait_time,
+        robot_command = robot,
         )
     decision_node.run()

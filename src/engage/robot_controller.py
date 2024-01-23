@@ -30,7 +30,7 @@ class SimpleARIController:
             target_body = bodies[target]
             if target_body.position is not None:
                 target_pos = PointStamped()
-                target_pos.header.frame_id = self.world_frame
+                target_pos.header.frame_id = "sellion_link"
                 target_pos.header.stamp = rospy.Time.now()
                 target_pos.point.x = target_body.position.position.x
                 target_pos.point.y = target_body.position.position.y

@@ -83,7 +83,10 @@ class Bagreader:
         for body in bodies:
             for _,msg,_ in self.log_bag.read_messages(topics=["/humans/bodies/{}/skeleton2d".format(body)]):
                 times[body].append(msg.header.stamp.to_sec())
-                locations[body].append((msg.skeleton[Skeleton2D.NOSE].x,msg.skeleton[Skeleton2D.NOSE].y))
+                label_keypoint = (msg.skeleton[Skeleton2D.NOSE].x,msg.skeleton[Skeleton2D.NOSE].y)
+                if label_keypoint == (-1,-1):
+                    label_keypoint = (msg.skeleton[Skeleton2D.NECK].x,msg.skeleton[Skeleton2D.NECK].y)
+                locations[body].append(label_keypoint)
         return locations,times
     
     def graph_choice(self):
@@ -352,6 +355,8 @@ class Bagreader:
     UTIL
     '''
     def nearest_time_within_threshold(self,time,timelist,threshold=0.1):
+        if timelist == []:
+            return None
         closest_index = np.argmin(np.abs(np.array(timelist)-time))
         if np.abs(timelist[closest_index] - time) > threshold:
             return None

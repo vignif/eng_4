@@ -112,6 +112,7 @@ class Visualiser:
                 self.msgs.append(msg)
                 self.times.append(t)
                 self.stamps.append(msg.header.stamp) # Use stamp time as that is what is used to synch everything 
+        print(len(self.msgs),len(self.times),len(self.stamps))
         self.img_height = self.msgs[0].height
         self.img_width = self.msgs[0].width
         self.num_frames = len(self.times)
