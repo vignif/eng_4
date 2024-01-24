@@ -44,12 +44,12 @@ class Visualiser:
         self.button_width = button_width
 
         buffer_w = 10
-        buffer_h = 100
+        buffer_h = 40
         w = self.img_width + buffer_w
         h = self.img_height + buffer_h
         graph_width = 500
     
-        self.header_canvas = tk.Canvas(self.root,width=w, height=50)
+        self.header_canvas = tk.Canvas(self.root,width=w, height=button_height)
         self.header_canvas.grid(row=0,column=0)
         self.video_canvas = tk.Canvas(self.root, width=w, height=h)
         self.video_canvas.grid(row=1,column=0)
@@ -186,8 +186,15 @@ class Visualiser:
         self.play_button.place(x=0, y=self.img_height,width=self.button_width,height=self.button_height)
 
         frame_index = tk.IntVar()
-        self.img_scale = tk.Scale(self.video_canvas, from_=0, to=self.num_frames-1, orient=tk.HORIZONTAL, variable=frame_index, length=self.img_width-self.button_width-1, command=self.update_frame)
+        self.img_scale = tk.Scale(self.video_canvas, from_=0, to=self.num_frames-1, orient=tk.HORIZONTAL, variable=frame_index, length=self.img_width-(2*self.button_width)-1, command=self.update_frame)
         self.img_scale.place(x=self.button_width+1, y=self.img_height)
+
+        self.backward_button = tk.Button(self.video_canvas,text="<",command=self.backward_one_frame)
+        self.backward_button.place(x=self.img_width-(self.button_width) + 1, y=self.img_height,width=self.button_width/2,height=self.button_height)
+
+        self.forward_button = tk.Button(self.video_canvas,text=">",command=self.forward_one_frame)
+        self.forward_button.place(x=self.img_width-(self.button_width/2) + 1, y=self.img_height,width=self.button_width/2,height=self.button_height)
+
 
     def update_logbag(self,n,m,x):
         exp = self.root.getvar(n)
@@ -314,6 +321,18 @@ class Visualiser:
                 # Restart video if at the end
                 self.curr_frame = 0
             self.update()
+
+    def forward_one_frame(self):
+        if self.curr_frame != self.num_frames - 1:
+            self.curr_frame += 1
+            self.update_frame(self.curr_frame)
+            self.img_scale.set(self.curr_frame)
+
+    def backward_one_frame(self):
+        if self.curr_frame != 0:
+            self.curr_frame -= 1
+            self.update_frame(self.curr_frame)
+            self.img_scale.set(self.curr_frame)
 
 
     def update(self):
