@@ -42,7 +42,7 @@ class Bagreader:
     graph_choices = sorted(single_value_graphs + engage_value_graphs + pairwise_graphs + special_graphs)
 
 
-    def __init__(self,cam_bag,log_bag,pruning_threshold=5):
+    def __init__(self,cam_bag,log_bag,pruning_threshold=10):
         self.cam_bag = cam_bag
         self.log_bag = log_bag
 
@@ -108,22 +108,22 @@ class Bagreader:
             if graph_name == "Decision":
                 fig,axes = self.plot_decision(graph_name)
             elif graph_name == "Group Confidence":
-                fig,axes = self.plot_group_confidence(graph_name)
+                fig,axes = self.plot_group_confidence(graph_name,self.pruned_bodies)
             elif graph_name == "Group Membership":
-                fig,axes = self.plot_group_membership(graph_name)
+                fig,axes = self.plot_group_membership(graph_name,self.pruned_bodies)
         elif graph_name in self.engage_value_graphs:
             # Graphs that contain one line for each body and use the EngagementValue message
-            fig,axes = self.plot_engagement_value_msg(graph_name)
+            fig,axes = self.plot_engagement_value_msg(graph_name,self.pruned_bodies)
         elif graph_name in self.pairwise_graphs:
             # Graphs for pairwise plots between bodies
-            fig,axes = self.plot_pairwise(graph_name)
+            fig,axes = self.plot_pairwise(graph_name,self.pruned_bodies)
         elif graph_name in self.single_value_graphs:
             # Graphs for single values per body
-            fig,axes = self.plot_single_values(graph_name)
+            fig,axes = self.plot_single_values(graph_name,self.pruned_bodies)
 
         return fig,axes
     
-    def plot_single_values(self,graph_name):   
+    def plot_single_values(self,graph_name,bodies):   
         if graph_name == "Engagement Level with Robot":
             subtopic = "engagement_status"
             label = "Engagement Level"
@@ -137,10 +137,10 @@ class Bagreader:
             subtopic = "activity"
             label = "Confidence"
         
-        values = {body:[] for body in self.bodies}
-        times = {body:[] for body in self.bodies}
+        values = {body:[] for body in bodies}
+        times = {body:[] for body in bodies}
 
-        for body in self.bodies:
+        for body in bodies:
             for _,msg,_ in self.log_bag.read_messages(topics=["/humans/bodies/{}/{}".format(body,subtopic)]):
                 if graph_name == "Engagement Level with Robot":
                     values[body].append(msg.level)
@@ -165,17 +165,16 @@ class Bagreader:
             unique_decisions = MessageHelper.motion_activity_names
             plt.yticks(list(range(len(unique_decisions))),unique_decisions,rotation=45)
 
-        for body in self.pruned_bodies:
+        for body in bodies:
             plt.plot(times[body],values[body],label=body)
         plt.legend()
 
         return fig,[ax]
 
     
-    def plot_pairwise(self,graph_name):
+    def plot_pairwise(self,graph_name,bodies):
         topic = "/humans/interactions/engagements"
-        body_combos = list(combinations(self.bodies+["ROBOT"], 2))
-        pruned_body_combos = list(combinations(self.pruned_bodies+["ROBOT"], 2))
+        body_combos = list(combinations(bodies+["ROBOT"], 2))
         values = {"{}_{}".format(bc[0],bc[1]):[] for bc in body_combos}
         times = {"{}_{}".format(bc[0],bc[1]):[] for bc in body_combos}
 
@@ -205,19 +204,19 @@ class Bagreader:
         ax.set_xlabel("Time")
         ax.set_ylabel(label)
 
-        for combo_pair in pruned_body_combos:
+        for combo_pair in body_combos:
             combo = "{}_{}".format(combo_pair[0],combo_pair[1])
             plt.plot(times[combo],values[combo],label=combo)
         ax.legend()
 
         return fig,[ax]
                 
-    def plot_engagement_value_msg(self,graph_name):
+    def plot_engagement_value_msg(self,graph_name,bodies):
         topic = "/humans/interactions/engagements"
-        values = {body:[] for body in self.bodies}
-        times = {body:[] for body in self.bodies}
+        values = {body:[] for body in bodies}
+        times = {body:[] for body in bodies}
         for _,msg,_ in self.log_bag.read_messages(topics=[topic]):
-            if msg.person_b == "": #ASSUMPTION: if robot is present, is always the second person
+            if msg.person_b == "" and msg.person_a in values: #ASSUMPTION: if robot is present, is always the second person
                 # Involves the robot
                 body = msg.person_a
                 if graph_name == "Distance to Robot":
@@ -242,16 +241,16 @@ class Bagreader:
         ax.set_xlabel("Time")
         ax.set_ylabel(label)
 
-        for body in self.pruned_bodies:
+        for body in bodies:
             plt.plot(times[body],values[body],label=body)
         ax.legend()
 
         return fig,[ax]
     
-    def plot_group_confidence(self,graph_name):
+    def plot_group_confidence(self,graph_name,bodies):
         topic = "/humans/interactions/groups"
-        values = {body:[] for body in self.bodies+["ROBOT"]}
-        times = {body:[] for body in self.bodies+["ROBOT"]}
+        values = {body:[] for body in bodies+["ROBOT"]}
+        times = {body:[] for body in bodies+["ROBOT"]}
         for _,msg,_ in self.log_bag.read_messages(topics=[topic]):
             for member,confidence in zip(msg.members,msg.confidences):
                 values[member].append(confidence)
@@ -261,18 +260,18 @@ class Bagreader:
         ax.set_xlabel("Time")
         ax.set_ylabel("Confidence")
 
-        for body in self.pruned_bodies+["ROBOT"]:
+        for body in bodies+["ROBOT"]:
             plt.plot(times[body],values[body],label=body)
         ax.legend()
 
         return fig,[ax]
     
-    def plot_group_membership(self,graph_name):
+    def plot_group_membership(self,graph_name,bodies):
         topic = "/humans/interactions/groups"
         values = {}
         times = {}
         
-        these_bodies = self.pruned_bodies+["ROBOT"]
+        these_bodies = bodies+["ROBOT"]
         body_indices = {body:these_bodies.index(body) for body in these_bodies}
 
         for _,msg,_ in self.log_bag.read_messages(topics=[topic]):

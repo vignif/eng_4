@@ -63,8 +63,9 @@ class Visualiser:
         self.create_header(exp)
 
         # Graph
+        self.graph_choice = None
         self.create_graph()
-
+        
         # Video player
         self.update_frame(0)
         self.create_video_slider()
@@ -202,7 +203,9 @@ class Visualiser:
         # Get dropdown list
         self.graph_list = self.bagreader.graph_choice()
 
-        self.graph_fig, self.graph_axes = self.bagreader.plot(default_graph)
+        if self.graph_choice is None:
+            self.graph_choice = default_graph
+        self.graph_fig, self.graph_axes = self.bagreader.plot(self.graph_choice)
         plt.tight_layout()
 
         curr_time = self.stamps[0].secs + self.stamps[0].nsecs/1000000000
@@ -213,7 +216,7 @@ class Visualiser:
 
         # Create dropdown widget
         graph_choice = tk.StringVar(self.graph_canvas,name="graph_choice")
-        graph_choice.set(default_graph)
+        graph_choice.set(self.graph_choice)
         graph_choice.trace("w", self.update_graph)
         self.graph_dropdown = tk.OptionMenu(self.graph_canvas, graph_choice, *self.graph_list)
         self.graph_dropdown.pack()
@@ -223,9 +226,9 @@ class Visualiser:
 
     def update_graph(self,n,m,x):
         
-        graph_choice = self.root.getvar(n)
+        self.graph_choice = self.root.getvar(n)
         
-        self.graph_fig, self.graph_axes = self.bagreader.plot(graph_choice)
+        self.graph_fig, self.graph_axes = self.bagreader.plot(self.graph_choice)
         plt.tight_layout()
 
         self.figure_canvas.get_tk_widget().destroy()
