@@ -60,8 +60,10 @@ class Visualiser:
         self.settings_canvas.grid(row=2,column=0)
         self.decision_canvas = tk.Canvas(self.root,width=graph_width,height=50)
         self.decision_canvas.grid(row=2,column=1)
-        self.explanation_canvas = tk.Canvas(self.root,width=w,height=h)
-        self.explanation_canvas.grid(row=3,column=0)
+        self.query_canvas = tk.Canvas(self.root,width=w,height=h)
+        self.query_canvas.grid(row=3,column=0)
+        self.explanation_canvas = tk.Canvas(self.root,width=graph_width,height=h)
+        self.explanation_canvas.grid(row=3,column=1)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
 
         # Header GUI
@@ -82,6 +84,7 @@ class Visualiser:
         self.create_decision_view()
 
         # Explanations
+        self.create_explanation_windows()
 
         
 
@@ -213,6 +216,78 @@ class Visualiser:
 
         self.forward_button = tk.Button(self.video_canvas,text=">",command=self.forward_one_frame)
         self.forward_button.place(x=self.img_width-(self.button_width/2) + 1, y=self.img_height,width=self.button_width/2,height=self.button_height)
+
+    def create_explanation_windows(self):
+        # Create Query Window
+        query_label = tk.Label(self.query_canvas,text="Query",font="-size 14 -weight bold")
+        query_label.place(x=0,y=0,height=self.button_height/2)
+
+        observation_label = tk.Label(self.query_canvas,text="Observation:",font="-size 10 -weight bold")
+        observation_label.place(x=0,y=self.button_height/2,height=self.button_height/2)
+
+        self.state_list_box = tk.Listbox(self.query_canvas)
+        state_scrollbar=tk.Scrollbar(self.state_list_box,orient="vertical",command = self.state_list_box.yview)
+        state_scrollbar.pack(side="right",fill="y")
+        self.state_list_box.configure(yscrollcommand=state_scrollbar.set)
+        self.state_list_box.place(x=0,y=self.button_height,width=int(0.8*self.query_canvas.winfo_width()),height=3*self.button_height)
+
+        decision_title_label = tk.Label(self.query_canvas,text="Decision:",font="-size 10 -weight bold")
+        decision_title_label.place(x=0,y=self.button_height*4,height=self.button_height/2)
+
+        self.decision_label = tk.Label(self.query_canvas,text="",font="-size 10")
+        self.decision_label.place(x=0,y=int(self.button_height*4.5),height=self.button_height/2)
+
+        query_choice_label = tk.Label(self.query_canvas,text="Query:",font="-size 10 -weight bold")
+        query_choice_label.place(x=0,y=self.button_height*5,height=self.button_height/2)
+
+        query_choice_action_label = tk.Label(self.query_canvas,text="Action: ",font="-size 10")
+        query_choice_action_label.place(x=0,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width)
+
+        query_action_choice = tk.StringVar(self.query_canvas,name="query_action_choice")
+        query_action_choice.set("None")
+        query_action_choice.trace("w", self.update_query_action_choice)
+        self.query_action_dropdown = tk.OptionMenu(self.query_canvas, query_action_choice, *["None"])
+        self.query_action_dropdown.place(x=self.button_width,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width*3)
+
+        query_choice_target_label = tk.Label(self.query_canvas,text="Target: ",font="-size 10")
+        query_choice_target_label.place(x=self.button_width*4,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width)
+
+        query_target_choice = tk.StringVar(self.query_canvas,name="query_target_choice")
+        query_target_choice.set("None")
+        query_target_choice.trace("w", self.update_query_target_choice)
+        self.query_target_dropdown = tk.OptionMenu(self.query_canvas, query_target_choice, *["None"])
+        self.query_target_dropdown.place(x=self.button_width*5,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width*3)
+
+        self.explain_button = tk.Button(self.query_canvas,text="Explain", width=self.button_width*3, command=self.explain)
+        self.explain_button.place(x=0, y=int(self.button_height*6),width=self.button_width*3,height=self.button_height)
+
+        # Update Query Window
+        self.update_query_window()
+
+        # Create Explanation Window
+        explanation_label = tk.Label(self.explanation_canvas,text="Explanation",font="-size 14 -weight bold")
+        explanation_label.place(x=0,y=0,height=self.button_height/2)
+
+
+    
+    def update_query_window(self):
+        # Get current decision
+        action,target = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
+        decision_text = "Decision: <{},{}>".format(action,target)
+        self.decision_label.config(text=decision_text)
+
+        # TODO: Replace with real state variables and assignments
+        for i in range(100):
+            self.state_list_box.insert("end","State {}".format(i))
+
+    def update_query_action_choice(self,n,m,x):
+        self.query_action_choice = self.root.getvar(n)
+
+    def update_query_target_choice(self,n,m,x):
+        self.query_target_choice = self.root.getvar(n)
+
+    def explain(self):
+        pass
 
 
     def update_logbag(self,n,m,x):
@@ -375,7 +450,8 @@ class Visualiser:
 
     def update_decision_view(self):
         action,target = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
-        self.decision_text.config(text="Decision: <{},{}>".format(action,target))
+        decision_text = "Decision: <{},{}>".format(action,target)
+        self.decision_text.config(text=decision_text)
 
     def save_image(self):
         f = tk.filedialog.asksaveasfile(mode='w', defaultextension=".png")
