@@ -165,7 +165,7 @@ class DecisionNode:
 
         # Control robot
         if self.robot_command:
-            self.robot_controller.execute_command(target,action,self.bodies)
+            self.robot_controller.execute_command(target,action,self.bodies,self.body_time)
 
         # Unlock
         self.lock = False

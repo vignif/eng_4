@@ -1,4 +1,5 @@
 import rospy
+import numpy as np
 
 from play_motion_msgs.msg import PlayMotionActionGoal
 from pal_interaction_msgs.msg import TtsActionGoal
@@ -13,7 +14,7 @@ class SimpleARIController:
         self.gaze_action_publisher = rospy.Publisher("/look_at",PointStamped,queue_size=1)
         self.tts_publisher = rospy.Publisher("/tts/goal",TtsActionGoal,queue_size=1)
 
-    def execute_command(self,target,action,bodies):
+    def execute_command(self,target,action,bodies,time):
         if action == Decision.NOTHING or action == Decision.WAIT:
             return None
         elif action == Decision.ELICIT_GENERAL:
@@ -24,19 +25,39 @@ class SimpleARIController:
             motion = "flying"
         motion_msg = PlayMotionActionGoal()
         motion_msg.goal.motion_name = motion
-        self.motion_action_publisher.publish(motion_msg)
+        #self.motion_action_publisher.publish(motion_msg)
 
-        if target is not None:
+        '''
+        if target is not None or target is None:
             target_body = bodies[target]
             if target_body.position is not None:
                 target_pos = PointStamped()
                 target_pos.header.frame_id = "sellion_link"
-                target_pos.header.stamp = rospy.Time.now()
+                #target_pos.header.stamp = rospy.Time.now()
+                target_pos.header.stamp = time
+                target_pos.header.frame_id = self.world_frame
                 target_pos.point.x = target_body.position.position.x
                 target_pos.point.y = target_body.position.position.y
                 target_pos.point.z = target_body.position.position.z
+                y = np.random.choice([-0.1,0,0.1])
+                z = np.random.choice([-1,0,1])
+                target_pos.point.x = 1
+                target_pos.point.y = y
+                target_pos.point.z = z
                 print(target_pos)
                 self.gaze_action_publisher.publish(target_pos)
+        '''
+        target_pos = PointStamped()
+        target_pos.header.frame_id = "sellion_link"
+        #target_pos.header.stamp = rospy.Time.now()
+        target_pos.header.stamp = time
+        y = np.random.choice([-0.1,0,0.1])
+        z = np.random.choice([-1,0,1])
+        target_pos.point.x = 1
+        target_pos.point.y = y
+        target_pos.point.z = z
+        print(target_pos)
+        self.gaze_action_publisher.publish(target_pos)
 
         tts_msg = TtsActionGoal()
         tts_msg.goal.rawtext.lang_id = "en_gb"
