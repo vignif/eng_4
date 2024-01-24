@@ -58,6 +58,9 @@ class Bagreader:
         # Locations
         self.locations,self.location_times,self.poses = self.get_locations(self.pruned_bodies)
 
+        # Decisions
+        self.decisions,self.decision_times,self.decision_msgs = self.read_decisions()
+
         
 
     def read_bodies(self):
@@ -73,6 +76,8 @@ class Bagreader:
                     body_count[body] += 1
                     body_times[body].append(msg.header.stamp.to_sec())
         return list(body_count.keys()),body_count,body_times
+    
+    
     
     def prune_bodies(self,threshold):
         bodies = []
@@ -94,6 +99,21 @@ class Bagreader:
                     label_keypoint = (msg.skeleton[Skeleton2D.NECK].x,msg.skeleton[Skeleton2D.NECK].y)
                 locations[body].append(label_keypoint)
         return locations,times,poses
+    
+    def read_decisions(self):
+        topic = "/hri_engage_decisions"
+        decision_msgs = []
+        decisions = []
+        times = []
+        for _,msg,_ in self.log_bag.read_messages(topics=[topic]):
+            decision_msgs.append(msg)
+            if msg.target == "":
+                decisions.append(MessageHelper.decision_names[msg.decision])
+            else:
+                decisions.append("{}_{}".format(MessageHelper.decision_names[msg.decision],msg.target))
+            times.append(msg.header.stamp.to_sec())
+        return decisions,times,decision_msgs
+
     
     def graph_choice(self):
         return self.graph_choices
@@ -319,19 +339,9 @@ class Bagreader:
         
 
     def plot_decision(self,graph_name):
-        topic = "/hri_engage_decisions"
-        decisions = []
-        times = []
-        for _,msg,_ in self.log_bag.read_messages(topics=[topic]):
-            if msg.target == "":
-                decisions.append(MessageHelper.decision_names[msg.decision])
-            else:
-                decisions.append("{}_{}".format(MessageHelper.decision_names[msg.decision],msg.target))
-            times.append(msg.header.stamp.to_sec())    
-
-        unique_decisions = sorted(list(set(decisions)))
+        unique_decisions = sorted(list(set(self.decisions)))
         index_dict = {decision:unique_decisions.index(decision) for decision in unique_decisions}
-        decision_enums = [index_dict[decision] for decision in decisions]
+        decision_enums = [index_dict[decision] for decision in self.decisions]
         fig,ax = plt.subplots()
 
         ax.set_title(graph_name)
@@ -339,7 +349,7 @@ class Bagreader:
         ax.set_ylabel("Decision")
         plt.yticks(list(range(len(unique_decisions))),unique_decisions,rotation=45)
 
-        plt.plot(times,decision_enums)
+        plt.plot(self.decision_times,decision_enums)
 
         return fig,[ax]
     
@@ -355,6 +365,17 @@ class Bagreader:
             else:
                 locations[body] = None
         return locations
+    
+    '''
+    DECISIONS
+    '''
+    def get_decision(self,time):
+        nearest_index = self.nearest_time_within_threshold(time,self.decision_times)
+        msg = self.decision_msgs[nearest_index]
+        action = MessageHelper.decision_names[msg.decision]
+        target = msg.target
+        target = None if target == "" else target
+        return action,target
     
     '''
     DRAW

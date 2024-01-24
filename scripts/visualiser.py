@@ -29,6 +29,7 @@ class Visualiser:
         self.pose_video = True
         self.display_ids = True
         self.blur_faces = False
+        self.decision_widget_created = False
 
         self.use_tracked = False
 
@@ -57,6 +58,8 @@ class Visualiser:
         self.graph_canvas.grid(row=1,column=1)
         self.settings_canvas = tk.Canvas(self.root,width=w,height=50)
         self.settings_canvas.grid(row=2,column=0)
+        self.decision_canvas = tk.Canvas(self.root,width=graph_width,height=50)
+        self.decision_canvas.grid(row=2,column=1)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
 
         # Header GUI
@@ -72,6 +75,11 @@ class Visualiser:
 
         # Settings
         self.create_settings()
+
+        # Decision
+        self.create_decision_view()
+
+        
 
     def close(self):
         self.root.quit()
@@ -179,6 +187,13 @@ class Visualiser:
         self.blur_faces_button = tk.Button(self.settings_canvas,text="Blur Faces", width=12, command=self.toggle_face_blur)
         self.blur_faces_button.place(x=adjusted_button_width*3, y=0,width=adjusted_button_width,height=self.button_height)
 
+    def create_decision_view(self):
+        self.decision_widget_created = True
+        self.decision_text = tk.Label(self.decision_canvas,text="",anchor="w")
+        self.decision_text.place(x=0,y=self.button_height/2)
+
+        self.update_decision_view()
+
     def create_video_slider(self):
         self.playing = False
         self.curr_frame = 0
@@ -246,6 +261,8 @@ class Visualiser:
         self.figure_canvas.draw()
         self.figure_canvas.get_tk_widget().pack(expand=True)
 
+        self.update_decision_view()
+
     def update_frame(self,frame_index):
         self.curr_frame = int(frame_index)
         
@@ -269,6 +286,10 @@ class Visualiser:
             ax.get_lines().pop().remove()
             ax.axvline(x=curr_time,color='r')
         self.figure_canvas.draw()
+
+        # Update decision
+        if self.decision_widget_created:
+            self.update_decision_view()
 
     def process_image(self,img):
         img = img.copy()
@@ -346,6 +367,11 @@ class Visualiser:
             else:
                 # Toggle back to pause after video ends
                 self.play_pause()
+
+
+    def update_decision_view(self):
+        action,target = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
+        self.decision_text.config(text="Decision: <{},{}>".format(action,target))
 
     def save_image(self):
         f = tk.filedialog.asksaveasfile(mode='w', defaultextension=".png")
