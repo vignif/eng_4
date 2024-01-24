@@ -60,6 +60,8 @@ class Visualiser:
         self.settings_canvas.grid(row=2,column=0)
         self.decision_canvas = tk.Canvas(self.root,width=graph_width,height=50)
         self.decision_canvas.grid(row=2,column=1)
+        self.explanation_canvas = tk.Canvas(self.root,width=w,height=h)
+        self.explanation_canvas.grid(row=3,column=0)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
 
         # Header GUI
@@ -78,6 +80,8 @@ class Visualiser:
 
         # Decision
         self.create_decision_view()
+
+        # Explanations
 
         
 
@@ -189,7 +193,7 @@ class Visualiser:
 
     def create_decision_view(self):
         self.decision_widget_created = True
-        self.decision_text = tk.Label(self.decision_canvas,text="",anchor="w")
+        self.decision_text = tk.Label(self.decision_canvas,text="Decision",anchor="w")
         self.decision_text.place(x=0,y=self.button_height/2)
 
         self.update_decision_view()

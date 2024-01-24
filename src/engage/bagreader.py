@@ -204,6 +204,9 @@ class Bagreader:
             combo = "{}_{}".format(body_a,body_b)
             if combo not in values:
                 combo = "{}_{}".format(body_b,body_a)
+                if combo not in values:
+                    continue
+
 
             if graph_name == "Pairwise Distance":
                 values[combo].append(msg.distance)
