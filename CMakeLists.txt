@@ -53,6 +53,7 @@ catkin_python_setup()
 add_message_files(
   FILES
   Decision.msg
+  DecisionState.msg
   MotionActivity.msg
   EngagementLevel.msg
   EngagementValue.msg

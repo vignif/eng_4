@@ -30,6 +30,8 @@ class Visualiser:
         self.display_ids = True
         self.blur_faces = False
         self.decision_widget_created = False
+        self.query_widget_created = False
+        self.explanation_widget_created = False
 
         self.use_tracked = False
 
@@ -262,11 +264,14 @@ class Visualiser:
         self.explain_button.place(x=0, y=int(self.button_height*6),width=self.button_width*3,height=self.button_height)
 
         # Update Query Window
+        self.query_widget_created = True
         self.update_query_window()
 
         # Create Explanation Window
         explanation_label = tk.Label(self.explanation_canvas,text="Explanation",font="-size 14 -weight bold")
         explanation_label.place(x=0,y=0,height=self.button_height/2)
+
+        self.explanation_widget_created = True
 
 
     
@@ -276,9 +281,18 @@ class Visualiser:
         decision_text = "Decision: <{},{}>".format(action,target)
         self.decision_label.config(text=decision_text)
 
-        # TODO: Replace with real state variables and assignments
-        for i in range(100):
-            self.state_list_box.insert("end","State {}".format(i))
+        # Clear old state
+        self.state_list_box.delete(0,"end")
+
+        # Get current state
+        state,_,_,_ = self.bagreader.get_state(self.stamps[self.curr_frame].to_sec())
+
+        for category in state:
+            self.state_list_box.insert("end","{}:".format(category))
+            self.state_list_box.itemconfig("end",background="#808080")
+            for variable in state[category]:
+                self.state_list_box.insert("end","{}:{}".format(variable,state[category][variable]))
+                self.state_list_box.itemconfig("end",background="#f2f2f2")
 
     def update_query_action_choice(self,n,m,x):
         self.query_action_choice = self.root.getvar(n)
@@ -369,6 +383,10 @@ class Visualiser:
         # Update decision
         if self.decision_widget_created:
             self.update_decision_view()
+
+        # Update explanation stuff
+        if self.query_widget_created:
+            self.update_query_window()
 
     def process_image(self,img):
         img = img.copy()
