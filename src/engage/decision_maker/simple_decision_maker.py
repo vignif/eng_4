@@ -1,4 +1,3 @@
-import rospy
 import operator
 
 from engage.msg import Decision,EngagementLevel,MotionActivity
@@ -44,7 +43,7 @@ class SimpleDecisionMaker:
             scores = self.calculate_scores(state)
 
             # Get the people who maximise the score
-            best_people = max(scores.items(), key=operator.itemgetter(1))
+            best_people = [kv[0] for kv in scores.items() if kv[1] == max(scores.values())]
 
             valid_people = [body for body in best_people if scores[body] > self.score_threshold]
 
@@ -69,6 +68,12 @@ class SimpleDecisionMaker:
         scores = {}
         for body in state.bodies:
             score = 0
+
+
+            # Check for Nones
+            if state.mutual_gazes[body] is None or state.distances[body] is None or state.engagement_values[body] is None or state.pose_confidences[body] is None:
+                scores[body] = -100000
+                continue
             
             # Group
             if state.in_group[body]:

@@ -39,36 +39,6 @@ class Bagreader:
         "Group Membership",
     ]
 
-    body_state_variables = [
-        "Distance",
-        "Engagement Level",
-        "Engagement Level Confidence",
-        "Engagement Value",
-        "Group",
-        "Group Confidence",
-        "Group with Robot",
-        "Motion",
-        "Motion Confidence",
-        "Mutual Gaze",
-        "Pose Estimation Confidence",
-    ]
-
-    robot_state_variables = [
-        "Group",
-        "Group Confidence",
-    ]
-
-    body_state_times = [
-        "Engagement Level Times",
-        "Engagement Value Times",
-        "Group Times",
-        "Motion Times",
-    ]
-
-    robot_state_times = [
-        "Group Times"
-    ]
-
     graph_choices = sorted(single_value_graphs + engage_value_graphs + pairwise_graphs + special_graphs)
 
 
@@ -92,7 +62,7 @@ class Bagreader:
         self.decisions,self.decision_times,self.decision_msgs = self.read_decisions()
 
         # State
-        self.compile_state_variables()
+        self.states,self.state_times,self.state_bodies = self.read_decision_states()
 
         
 
@@ -134,7 +104,7 @@ class Bagreader:
         return locations,times,poses
     
     def read_decisions(self):
-        topic = "/hri_engage_decisions"
+        topic = "/hri_engage/decisions"
         decision_msgs = []
         decisions = []
         times = []
@@ -151,65 +121,58 @@ class Bagreader:
     def graph_choice(self):
         return self.graph_choices
     
-    def compile_state_variables(self):
+    def read_decision_states(self):
         # Set up state dict
-        self.states = {body:{} for body in self.bodies+["ROBOT"]}
+        states = {}
+        state_bodies = []
+        state_times = {}
+        states["ROBOT"] = {"Group":[],"Group Confidence":[]}
+        states["GENERAL"] = {"Waiting":[]}
+        states["DECISION"] = {"Action":[],"Target":[]}
+        state_times["ROBOT"] = []
 
-        # TODO: Include waiting variable
-        for body in self.bodies:
-            for variable in self.body_state_variables:
-                self.states[body][variable] = []
-            for time_list in self.body_state_times:
-                self.states[body][time_list] = []
-        for variable in self.robot_state_variables:
-            self.states["ROBOT"][variable] = []
-        for time_list in self.robot_state_times:
-            self.states["ROBOT"][time_list] = []
+        for _,msg,_ in self.log_bag.read_messages(topics=["/hri_engage/decision_states"]):
 
-        # Engagement Value variables
-        for _,msg,_ in self.log_bag.read_messages(topics=["/humans/interactions/engagements"]):
-            if msg.person_b == "":
-                # Only interested in variables for human-robot
-                body_dict = self.states[msg.person_a]
-                body_dict["Distance"].append(msg.distance)
-                body_dict["Mutual Gaze"].append(msg.mutual_gaze)
-                body_dict["Engagement Value"].append(msg.engagement)
-                body_dict["Pose Estimation Confidence"].append(msg.confidence_a)
-                body_dict["Engagement Value Times"].append(msg.header.stamp.to_sec())
-        
-        for body in self.bodies:
-            # Motion Activity variables
-            for _,msg,_ in self.log_bag.read_messages(topics=["/humans/bodies/{}/activity".format(body)]):
-                body_dict = self.states[body]
-                body_dict["Motion"].append(msg.activity)
-                body_dict["Motion Confidence"].append(msg.confidence)
-                body_dict["Motion Times"].append(msg.header.stamp.to_sec())
-            # Engagement Level variables
-            for _,msg,_ in self.log_bag.read_messages(topics=["/humans/bodies/{}/engagement_status".format(body)]):
-                body_dict = self.states[body]
-                body_dict["Engagement Level"].append(msg.level)
-                body_dict["Engagement Level Confidence"].append(msg.confidence)
-                body_dict["Engagement Level Times"].append(msg.header.stamp.to_sec())
+            for i in range(len(msg.bodies)):
+                body = msg.bodies[i]
 
-        # Group Variables
-        for _,msg,_ in self.log_bag.read_messages(topics=["/humans/interactions/groups"]):
-            time = msg.header.stamp.to_sec()
-            if len(msg.members) > 1:
-                group = True
-            else:
-                group = False
+                if body not in states:
+                    states[body] = {}
+                    state_times[body] = []
+                    states[body]["Distance"] = []
+                    states[body]["Mutual Gaze"] = []
+                    states[body]["Engagement Value"] = []
+                    states[body]["Pose Estimation Confidence"] = []
+                    states[body]["Engagement Level"] = []
+                    states[body]["Engagement Level Confidence"] = []
+                    states[body]["Motion"] = []
+                    states[body]["Motion Confidence"] = []
+                    states[body]["Group"] = []
+                    states[body]["Group Confidence"] = []
+                    states[body]["Group with Robot"] = []
 
-            if "ROBOT" in msg.members:
-                gwr = True
-            else:
-                gwr = False
+                state_times[body].append(msg.header.stamp.to_sec())
+                states[body]["Distance"].append(msg.distances[i])
+                states[body]["Mutual Gaze"].append(msg.mutual_gazes[i])
+                states[body]["Engagement Value"].append(msg.engagement_values[i])
+                states[body]["Pose Estimation Confidence"].append(msg.pose_estimation_confidences[i])
+                states[body]["Engagement Level"].append(msg.engagement_levels[i])
+                states[body]["Engagement Level Confidence"].append(msg.engagement_level_confidences[i])
+                states[body]["Motion"].append(msg.motion_activities[i])
+                states[body]["Motion Confidence"].append(msg.motion_activity_confidences[i])
+                states[body]["Group"].append(msg.groups[i])
+                states[body]["Group Confidence"].append(msg.group_confidences[i])
+                states[body]["Group with Robot"].append(msg.group_with_robot[i])
 
-            for i in range(len(msg.members)):
-                self.states[msg.members[i]]["Group Confidence"].append(msg.confidences[i])
-                self.states[msg.members[i]]["Group"].append(group)
-                if msg.members[i] != "ROBOT":
-                    self.states[msg.members[i]]["Group with Robot"].append(gwr)
-                self.states[msg.members[i]]["Group Times"].append(time)
+            states["GENERAL"]["Waiting"].append(msg.waiting)
+            states["DECISION"]["Action"].append(msg.decision_action)
+            states["DECISION"]["Target"].append(msg.decision_target)
+            states["ROBOT"]["Group"].append(msg.robot_group)
+            states["ROBOT"]["Group Confidence"].append(msg.robot_group_confidence)
+            state_times["ROBOT"].append(msg.header.stamp.to_sec())
+            state_bodies.append(msg.bodies)
+
+        return states,state_times,state_bodies
 
     
     '''
@@ -479,52 +442,30 @@ class Bagreader:
         state_discrete = {}
         state_readable = {}
 
-        state_bodies = []
-        for body in self.bodies:
-            body_index = self.nearest_time_within_threshold(time,self.body_times[body],threshold=time_threshold)
-            if body_index is not None:
-                state_bodies.append(body)
+        state_index = self.nearest_time_within_threshold(time,self.state_times["ROBOT"],time_threshold)
+        if state_index is not None:
+            for key in self.states:
+                state[key] = {}
+                for var in self.states[key]:
+                    if key == "ROBOT" or key == "GENERAL" or key == "DECISION":
+                        state[key][var] = self.states[key][var][state_index]
+                    else:
+                        var_list = self.states[key][var]
+                        if self.state_times["ROBOT"][state_index] in self.state_times[key]:
+                            state[key][var] = var_list[self.state_times[key].index(self.state_times["ROBOT"][state_index])]
 
-        for body in state_bodies+["ROBOT"]:
-            state[body] = {}
+        keys_to_del = []
+        for key in state:
+            if state[key] == {}:
+                keys_to_del.append(key)
+        for key in keys_to_del:
+            del state[key]
 
-        for body in state_bodies:
-            # Engagement Value
-            nearest_ev_index = self.nearest_time_within_threshold(time,self.states[body]["Engagement Value Times"],threshold=time_threshold)
-            if nearest_ev_index is not None:
-                state[body]["Distance"] = self.states[body]["Distance"][nearest_ev_index]
-                state[body]["Mutual Gaze"] = self.states[body]["Mutual Gaze"][nearest_ev_index]
-                state[body]["Engagement Value"] = self.states[body]["Engagement Value"][nearest_ev_index]
-                state[body]["Pose Estimation Confidence"] = self.states[body]["Pose Estimation Confidence"][nearest_ev_index]
-
-            # Motion Activity
-            nearest_ma_index = self.nearest_time_within_threshold(time,self.states[body]["Motion Times"],threshold=time_threshold)
-            if nearest_ma_index is not None:
-                state[body]["Motion"] = self.states[body]["Motion"][nearest_ma_index]
-                state[body]["Motion Confidence"] = self.states[body]["Motion Confidence"][nearest_ma_index]
-
-            # Engagement Level
-            nearest_el_index = self.nearest_time_within_threshold(time,self.states[body]["Engagement Level Times"],threshold=time_threshold)
-            if nearest_el_index is not None:
-                state[body]["Engagement Level"] = self.states[body]["Engagement Level"][nearest_el_index]
-                state[body]["Engagement Level Confidence"] = self.states[body]["Engagement Level Confidence"][nearest_el_index]
-
-            # Group
-            nearest_g_index = self.nearest_time_within_threshold(time,self.states[body]["Group Times"],threshold=time_threshold)
-            if nearest_g_index is not None:
-                state[body]["Group"] = self.states[body]["Group"][nearest_g_index]
-                state[body]["Group with Robot"] = self.states[body]["Group with Robot"][nearest_g_index]
-                state[body]["Group Confidence"] = self.states[body]["Group Confidence"][nearest_g_index]
-
-        # Robot Variables
-        body = "ROBOT"
-        nearest_g_index = self.nearest_time_within_threshold(time,self.states[body]["Group Times"],threshold=time_threshold)
-        if nearest_g_index is not None:
-            state[body]["Group"] = self.states[body]["Group"][nearest_g_index]
-            state[body]["Group Confidence"] = self.states[body]["Group Confidence"][nearest_g_index]
+        # TODO: Implement state_readable and state_discrete
+        
 
 
-        return state,state_readable,state_discrete,state_bodies
+        return state,state_readable,state_discrete,self.state_bodies[state_index]
 
 
     

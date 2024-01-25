@@ -1,3 +1,5 @@
+from engage.msg import StateDecision
+
 class DecisionState:
     def __init__(self,
                  time,
@@ -32,31 +34,35 @@ class DecisionState:
         self.in_group = {}
         self.group_with_robot = {}
         self.robot_in_group = self.check_group("ROBOT")
+        self.robot_group_confidence = self.group_confidences["ROBOT"]
         self.robot_group_members = []
         for body in self.bodies:
             self.in_group[body] = self.check_group(body)
-            self.group_with_robot = self.robot_in_group and (self.groups[body] == self.groups["ROBOT"])
+            self.group_with_robot[body] = self.robot_in_group and (self.groups[body] == self.groups["ROBOT"])
             if self.group_with_robot:
                 self.robot_group_members.append(body)
 
         self.waiting = waiting
 
     def message(self,action,target):
-        decision_state = DecisionState()
+        decision_state = StateDecision()
         decision_state.header.stamp = self.time
 
         decision_state.bodies = self.bodies
-        decision_state.distances = [self.distances[body] for body in self.bodies]
-        decision_state.mutual_gazes = [self.mutual_gazes[body] for body in self.bodies]
-        decision_state.engagement_values = [self.engagement_values[body] for body in self.bodies]
-        decision_state.pose_estimation_confidences = [self.pose_confidences[body] for body in self.bodies]
+        decision_state.groups = [self.groups[body] for body in self.bodies]
+        decision_state.distances = [self.distances[body] if self.distances[body] is not None else 0 for body in self.bodies]
+        decision_state.mutual_gazes = [self.mutual_gazes[body] if self.mutual_gazes[body] is not None else 0 for body in self.bodies]
+        decision_state.engagement_values = [self.engagement_values[body] if self.engagement_values[body] is not None else 0 for body in self.bodies]
+        decision_state.pose_estimation_confidences = [self.pose_confidences[body] if self.pose_confidences[body] is not None else 0 for body in self.bodies]
         decision_state.engagement_levels = [self.engagement_levels[body] for body in self.bodies]
         decision_state.engagement_level_confidences = [self.engagement_level_confidences[body] for body in self.bodies]
         decision_state.motion_activities = [self.motions[body] for body in self.bodies]
         decision_state.motion_activity_confidences = [self.motion_confidences[body] for body in self.bodies]
         decision_state.groups = [self.in_group[body] for body in self.bodies]
         decision_state.group_with_robot = [self.group_with_robot[body] for body in self.bodies]
-        decision_state.group_confidences = [self.group_confidences[body] for body in self.bodies]
+        decision_state.group_confidences = [self.group_confidences[body] if self.group_confidences[body] is not None else 0 for body in self.bodies]
+        decision_state.robot_group = self.robot_in_group
+        decision_state.robot_group_confidence = self.robot_group_confidence if self.robot_group_confidence is not None else 0
         decision_state.waiting = self.waiting
 
         decision_state.decision_action = action

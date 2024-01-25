@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 
 from engage.bagreader import Bagreader
+from engage.message_helper import MessageHelper
 
 class Visualiser:
     def __init__(self,
@@ -247,17 +248,16 @@ class Visualiser:
 
         query_action_choice = tk.StringVar(self.query_canvas,name="query_action_choice")
         query_action_choice.set("None")
-        query_action_choice.trace("w", self.update_query_action_choice)
-        self.query_action_dropdown = tk.OptionMenu(self.query_canvas, query_action_choice, *["None"])
+        action_choices = [None]+MessageHelper.decision_names
+        self.query_action_dropdown = tk.OptionMenu(self.query_canvas, query_action_choice, *action_choices)
         self.query_action_dropdown.place(x=self.button_width,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width*3)
 
         query_choice_target_label = tk.Label(self.query_canvas,text="Target: ",font="-size 10")
         query_choice_target_label.place(x=self.button_width*4,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width)
 
-        query_target_choice = tk.StringVar(self.query_canvas,name="query_target_choice")
-        query_target_choice.set("None")
-        query_target_choice.trace("w", self.update_query_target_choice)
-        self.query_target_dropdown = tk.OptionMenu(self.query_canvas, query_target_choice, *["None"])
+        self.query_target_choice = tk.StringVar(self.query_canvas,name="query_target_choice")
+        self.query_target_choice.set("None")
+        self.query_target_dropdown = tk.OptionMenu(self.query_canvas, self.query_target_choice, *["None"])
         self.query_target_dropdown.place(x=self.button_width*5,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width*3)
 
         self.explain_button = tk.Button(self.query_canvas,text="Explain", width=self.button_width*3, command=self.explain)
@@ -285,20 +285,22 @@ class Visualiser:
         self.state_list_box.delete(0,"end")
 
         # Get current state
-        state,_,_,_ = self.bagreader.get_state(self.stamps[self.curr_frame].to_sec())
+        state,_,_,state_bodies = self.bagreader.get_state(self.stamps[self.curr_frame].to_sec())
 
         for category in state:
             self.state_list_box.insert("end","{}:".format(category))
             self.state_list_box.itemconfig("end",background="#808080")
             for variable in state[category]:
-                self.state_list_box.insert("end","{}:{}".format(variable,state[category][variable]))
+                self.state_list_box.insert("end","{}: {}".format(variable,state[category][variable]))
                 self.state_list_box.itemconfig("end",background="#f2f2f2")
 
-    def update_query_action_choice(self,n,m,x):
-        self.query_action_choice = self.root.getvar(n)
-
-    def update_query_target_choice(self,n,m,x):
-        self.query_target_choice = self.root.getvar(n)
+        # Repopulate dropdown for target
+        self.query_target_dropdown['menu'].delete(0, 'end')
+        new_choices = ["None"]+state_bodies
+        for choice in new_choices:
+             self.query_target_dropdown['menu'].add_command(label=choice, command=tk._setit(self.query_target_choice, choice))
+        if self.query_target_choice.get() not in new_choices:
+            self.query_target_choice.set("None")
 
     def explain(self):
         pass

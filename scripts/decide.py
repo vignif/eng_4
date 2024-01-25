@@ -1,10 +1,8 @@
 import rospy
-import numpy as np
 import argparse
-import pandas as pd
 
 from message_filters import ApproximateTimeSynchronizer, Subscriber
-from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,Decision,PoseArrayUncertain,DecisionState
+from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,Decision,PoseArrayUncertain,StateDecision
 from hri_msgs.msg import IdsList
 
 from engage.decision_maker.simple_decision_maker import SimpleDecisionMaker
@@ -82,7 +80,7 @@ class DecisionNode:
         self.rate = rospy.Rate(rate)
         self.last_decision_time = None
         self.lock = False
-        self.wait_time = wait_time
+        self.wait_time = rospy.Duration(wait_time)
 
         # Decision-Maker
         self.dm = self.decision_makers[decision_maker]()
@@ -99,7 +97,7 @@ class DecisionNode:
 
         # Publishers
         self.decision_publisher = rospy.Publisher("/hri_engage/decisions",Decision,queue_size=1)
-        self.decision_state_publisher = rospy.Publisher("hri_engage/decision_states",DecisionState,queue_size=1)
+        self.decision_state_publisher = rospy.Publisher("hri_engage/decision_states",StateDecision,queue_size=1)
 
         # Managing bodies
         self.body_time = None
@@ -206,94 +204,13 @@ class DecisionNode:
                 self.group_confidences[id] = conf
 
     '''
-    DATAFRAME
+    STATE
     '''
     def is_waiting(self):
         if self.last_decision_time is None or self.body_time - self.last_decision_time > self.wait_time:
             return False
         else:
             return True
-
-    def compile_decision_vars(self):
-        decision_vars = {}
-        if self.last_decision_time is None or self.body_time - self.last_decision_time > self.dm.wait_time:
-            decision_vars["Waiting"] = False
-        else:
-            decision_vars["Waiting"] = True
-        return decision_vars
-
-    def compile_body_df(self):
-        headers = ["Body Time","Dec Time","Body","Group","G","GC","A","AC","EL","ELC","MG","D","EV","PC","GWR"]
-        table = []
-        for id in self.bodies:
-            if self.bodies[id].engagement_level is None or self.bodies[id].activity is None or self.distances[id] is None or self.groups[id] is None:
-                continue
-            body_row = [
-                self.body_time,
-                self.dec_time,
-                id,
-                self.groups[id],
-                self.in_group(id),
-                self.float_bucket(self.group_confidences[id]),
-                self.bodies[id].activity,
-                self.float_bucket(self.bodies[id].activity_confidence),
-                self.bodies[id].engagement_level,
-                self.float_bucket(self.bodies[id].engagement_level_confidence),
-                self.float_bucket(self.mutual_gazes[id]),
-                self.distance_bucket(self.distances[id]),
-                self.float_bucket(self.engagements[id]),
-                self.float_bucket(self.pose_confidences[id]),
-                self.groups[id] == self.groups["ROBOT"],
-            ]
-            table.append(body_row)
-        # ROBOT
-        if decision_node.group_confidences["ROBOT"] is not None:
-            table.append([
-                self.body_time,
-                self.dec_time,
-                "ROBOT",
-                self.groups["ROBOT"],
-                self.in_group("ROBOT"),
-                self.float_bucket(self.group_confidences["ROBOT"]),
-                0,
-                3,
-                0,
-                3,
-                0,
-                0,
-                0,
-                1,
-                True
-                ])
-        return pd.DataFrame(table,columns=headers)
-
-    def in_group(self,id):
-        # True if id's group > 1 person
-        same_group = [k for k,v in self.groups.items() if v == self.groups[id]]
-        return len(same_group)>1
-
-    def float_bucket(self,value):
-        if value < 0.25:
-            return 0
-        elif value < 0.5:
-            return 1
-        elif value < 0.75:
-            return 2
-        else:
-            return 3
-
-    def distance_bucket(self,distance):
-        if distance <= 3:
-            discretised_distance = round(distance * 2) / 2
-        else:
-            discretised_distance = round(distance)
-
-        if discretised_distance == 0.0:
-            discretised_distance = 0.1
-        elif discretised_distance > 8:
-            discretised_distance = 9
-
-        return discretised_distance
 
     '''
     PUBLISHING

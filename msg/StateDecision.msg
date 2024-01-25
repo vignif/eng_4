@@ -1,6 +1,7 @@
 Header header
 
 string[] bodies
+string[] group_names
 float32[] distances
 float32[] mutual_gazes
 float32[] engagement_values
@@ -12,6 +13,8 @@ float32[] motion_activity_confidences
 bool[] groups
 bool[] group_with_robot
 float32[] group_confidences
+bool robot_group
+float32 robot_group_confidence
 bool waiting
 uint8 decision_action
 string decision_target

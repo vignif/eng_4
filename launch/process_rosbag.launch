@@ -1,5 +1,5 @@
 <launch>
-    <arg name="cam_name"/>
+    <arg name="cam_name" default="camera"/>
     <arg name="exp"/>
     <arg name="bag_dir" value="/home/tamlin/engage/rosbags"/>
     <arg name="rgb_img" value="/$(arg cam_name)/color/image_raw"/>
@@ -14,9 +14,8 @@
 
     <node pkg="rosbag" type="play" name="rosbag_play" output="screen" args="$(arg bag_dir)/$(arg exp).bag"/>
 
-    <!-- As more topics are added to the system, feel free to update the args for this -->
     <node pkg="rosbag" type="record" name="rosbag_record"
-        args="-O $(arg bag_dir)/logbags/$(arg exp).bag $(arg pos_img) -e '/humans/bodies/(.*)' /humans/interactions/engagements /humans/interactions/groups /hri_engage_decisions"
+        args="-O $(arg bag_dir)/logbags/$(arg exp).bag $(arg pos_img) -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups"
         />
 
     <node name="pose" pkg="engage" type="pose.py"

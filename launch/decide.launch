@@ -17,9 +17,8 @@
         args="-O $(arg bag_dir)/$(arg exp).bag --split --duration=2m /$(arg cam_name)/color/image_raw /$(arg cam_name)/depth/image_rect_raw /$(arg cam_name)/color/camera_info /$(arg cam_name)/depth/camera_info"
         />
 
-    <!-- $(arg pos_img) -->
     <node pkg="rosbag" type="record" name="rosbag_record"
-        args="-O $(arg bag_dir)/logbags/$(arg exp).bag --split --duration=2m  -e '/humans/bodies/(.*)' /humans/interactions/engagements /humans/interactions/groups /hri_engage_decisions"
+        args="-O $(arg bag_dir)/logbags/$(arg exp).bag --split --duration=2m  -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups"
         />
 
     <node name="pose" pkg="engage" type="pose.py"
