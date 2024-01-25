@@ -4,12 +4,13 @@ import argparse
 import pandas as pd
 
 from message_filters import ApproximateTimeSynchronizer, Subscriber
-from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,Decision,PoseArrayUncertain
+from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,Decision,PoseArrayUncertain,DecisionState
 from hri_msgs.msg import IdsList
 
 from engage.decision_maker.simple_decision_maker import SimpleDecisionMaker
 from engage.pose_helper import HRIPoseBody
 from engage.robot_controller import SimpleARIController
+from engage.decision_helper import DecisionState
 
 class DecisionBody:
     def __init__(self,id):
@@ -75,16 +76,16 @@ class DecisionNode:
             robot_controller="simple__ari_controller",
             rate=20,
             robot_command=True,
-            **kwargs
+            wait_time=5
     ):
         # Rate
         self.rate = rospy.Rate(rate)
         self.last_decision_time = None
         self.lock = False
-        
+        self.wait_time = wait_time
 
         # Decision-Maker
-        self.dm = self.decision_makers[decision_maker](**kwargs)
+        self.dm = self.decision_makers[decision_maker]()
 
         # Robot Controller
         self.robot_command = robot_command
@@ -97,7 +98,8 @@ class DecisionNode:
         self.group_subscriber = rospy.Subscriber("/humans/interactions/groups",Group,self.update_groups)
 
         # Publishers
-        self.decision_publisher = rospy.Publisher("/hri_engage_decisions",Decision,queue_size=1)
+        self.decision_publisher = rospy.Publisher("/hri_engage/decisions",Decision,queue_size=1)
+        self.decision_state_publisher = rospy.Publisher("hri_engage/decision_states",DecisionState,queue_size=1)
 
         # Managing bodies
         self.body_time = None
@@ -152,16 +154,26 @@ class DecisionNode:
             del self.pose_confidences[id]
 
         # Make decision
-        # TODO: refactor the whole thing to use an observation class rather than a pandas dataframe being passed around
-        decision_vars = self.compile_decision_vars()
-        body_df = self.compile_body_df() # Create a body dataframe
-        target,action = self.dm.decide(body_df,decision_vars)
+        self.state = DecisionState(self.body_time,
+                                   self.bodies,
+                                   self.groups,
+                                   self.group_confidences,
+                                   self.distances,
+                                   self.engagements,
+                                   self.mutual_gazes,
+                                   self.pose_confidences,
+                                   self.is_waiting()
+                                   )
+        target,action = self.dm.decide(self.state)
 
         if action != Decision.NOTHING and action != Decision.WAIT:
             self.last_decision_time = self.body_time
 
         # Publish decision
         self.publish_decision(target,action,self.body_time)
+
+        # Publish state
+        self.publish_decision_state(self.state,action,target)
 
         # Control robot
         if self.robot_command:
@@ -196,6 +208,12 @@ class DecisionNode:
     '''
     DATAFRAME
     '''
+    def is_waiting(self):
+        if self.last_decision_time is None or self.body_time - self.last_decision_time > self.wait_time:
+            return False
+        else:
+            return True
+
     def compile_decision_vars(self):
         decision_vars = {}
         if self.last_decision_time is None or self.body_time - self.last_decision_time > self.dm.wait_time:
@@ -287,6 +305,12 @@ class DecisionNode:
         decision.decision = action
         decision.target = target if target is not None else ""
         self.decision_publisher.publish(decision)
+
+    
+
+    def publish_decision_state(self,state:DecisionState,action:int,target:str):
+        self.decision_state_publisher.publish(state.message(action,target))
+        
 
     '''
     UTIL
