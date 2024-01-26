@@ -10,6 +10,8 @@ import numpy as np
 
 from engage.bagreader import Bagreader
 from engage.message_helper import MessageHelper
+from engage.explanation.hri_explainer import HRIBodyExplainer
+from engage.decision_maker.simple_decision_maker import SimpleDecisionMaker
 
 class Visualiser:
     def __init__(self,
@@ -88,6 +90,8 @@ class Visualiser:
 
         # Explanations
         self.create_explanation_windows()
+        self.decision_maker = SimpleDecisionMaker()
+        self.explainer = HRIBodyExplainer(self.decision_maker)
 
         
 
@@ -246,10 +250,10 @@ class Visualiser:
         query_choice_action_label = tk.Label(self.query_canvas,text="Action: ",font="-size 10")
         query_choice_action_label.place(x=0,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width)
 
-        query_action_choice = tk.StringVar(self.query_canvas,name="query_action_choice")
-        query_action_choice.set("None")
-        action_choices = [None]+MessageHelper.decision_names
-        self.query_action_dropdown = tk.OptionMenu(self.query_canvas, query_action_choice, *action_choices)
+        self.query_action_choice = tk.StringVar(self.query_canvas,name="query_action_choice")
+        self.query_action_choice.set("None")
+        action_choices = ["None"]+MessageHelper.decision_names
+        self.query_action_dropdown = tk.OptionMenu(self.query_canvas, self.query_action_choice, *action_choices)
         self.query_action_dropdown.place(x=self.button_width,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width*3)
 
         query_choice_target_label = tk.Label(self.query_canvas,text="Target: ",font="-size 10")
@@ -271,39 +275,85 @@ class Visualiser:
         explanation_label = tk.Label(self.explanation_canvas,text="Explanation",font="-size 14 -weight bold")
         explanation_label.place(x=0,y=0,height=self.button_height/2)
 
+        self.explanation_list_box = tk.Listbox(self.explanation_canvas)
+        explanation_scrollbar=tk.Scrollbar(self.explanation_list_box,orient="vertical",command = self.explanation_list_box.yview)
+        explanation_scrollbar.pack(side="right",fill="y")
+        self.explanation_list_box.configure(yscrollcommand=explanation_scrollbar.set)
+        self.explanation_list_box.place(x=0,y=self.button_height/2,width=int(self.explanation_canvas.winfo_width()),height=6*self.button_height)
+
         self.explanation_widget_created = True
 
 
     
     def update_query_window(self):
         # Get current decision
-        action,target = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
-        decision_text = "Decision: <{},{}>".format(action,target)
+        self.true_action,self.true_target = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
+        decision_text = "Decision: <{},{}>".format(self.true_action,self.true_target)
         self.decision_label.config(text=decision_text)
 
         # Clear old state
         self.state_list_box.delete(0,"end")
 
         # Get current state
-        state,_,_,state_bodies = self.bagreader.get_state(self.stamps[self.curr_frame].to_sec())
+        self.real_state,read_state,self.discrete_state,self.state_bodies = self.bagreader.get_state(self.stamps[self.curr_frame].to_sec())
 
-        for category in state:
+        for category in read_state:
             self.state_list_box.insert("end","{}:".format(category))
             self.state_list_box.itemconfig("end",background="#808080")
-            for variable in state[category]:
-                self.state_list_box.insert("end","{}: {}".format(variable,state[category][variable]))
+            for variable in read_state[category]:
+                self.state_list_box.insert("end","{}: {}".format(variable,read_state[category][variable]))
                 self.state_list_box.itemconfig("end",background="#f2f2f2")
 
         # Repopulate dropdown for target
         self.query_target_dropdown['menu'].delete(0, 'end')
-        new_choices = ["None"]+state_bodies
+        new_choices = ["None"]+self.state_bodies
         for choice in new_choices:
              self.query_target_dropdown['menu'].add_command(label=choice, command=tk._setit(self.query_target_choice, choice))
         if self.query_target_choice.get() not in new_choices:
             self.query_target_choice.set("None")
 
     def explain(self):
-        pass
+        # Clear old explanation
+        self.explanation_list_box.delete(0,"end")
+
+        # Set up new query
+        query_action = self.query_action_choice.get()
+        if query_action == "None":
+            query_action = None
+        query_target = self.query_target_choice.get()
+        if query_target == "None":
+            query_target = None
+
+        real_decision = (self.true_action,self.true_target)
+        query = (query_action,query_target)
+
+        valid_query,query_message = self.explainer.setup_explanation(self.discrete_state,self.state_bodies,real_decision,query)
+
+        # Handle bad query
+        if not valid_query:
+            self.explanation_list_box.insert("end","Bad Query: {}".format(query_message))
+            self.explanation_list_box.itemconfig("end",background="#ff8080")
+            return
+        
+        # Begin explanation
+        self.explanation_list_box.insert("end","Generating explanation...")
+        variables,changes,success,error_message = self.explainer.explain()
+
+        self.explanation_list_box.delete(0,"end")
+
+        if success:
+
+            for i in range(len(variables)):
+                if changes[i] is None:
+                    change_text = "(Any change)"
+                else:
+                    change_text = changes[i]
+
+                self.explanation_list_box.insert("end","{} {}".format(variables[i],change_text))
+        else:
+            self.explanation_list_box.insert("end","{}".format(error_message))
+
+
 
 
     def update_logbag(self,n,m,x):

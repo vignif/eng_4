@@ -5,9 +5,11 @@ import rospy
 import numpy as np
 import colorcet as cc
 import cv2
+import copy
 
 from engage.message_helper import MessageHelper
 from engage.marker_visualisation import MarkerMaker
+from engage.decision_helper import DecisionState
 from hri_msgs.msg import Skeleton2D
 
 CMAP = plt.get_cmap("tab10")
@@ -439,8 +441,7 @@ class Bagreader:
     
     def get_state(self,time,time_threshold=0.05):
         state = {}
-        state_discrete = {}
-        state_readable = {}
+        
 
         state_index = self.nearest_time_within_threshold(time,self.state_times["ROBOT"],time_threshold)
         if state_index is not None:
@@ -461,12 +462,56 @@ class Bagreader:
         for key in keys_to_del:
             del state[key]
 
-        # TODO: Implement state_readable and state_discrete
-        
+        state_discrete = self.discretise_state(state,self.state_bodies[state_index])
+        state_readable = self.make_state_readable(state,state_discrete)
 
 
         return state,state_readable,state_discrete,self.state_bodies[state_index]
 
+
+    def discretise_state(self,state,bodies):
+        discrete_state = copy.deepcopy(state)
+
+        # Remove decision
+        del discrete_state["DECISION"]
+
+        discrete_state["ROBOT"]["Group Confidence"] = DecisionState.float_bucket(discrete_state["ROBOT"]["Group Confidence"])
+
+        body_floats = ["Mutual Gaze","Engagement Value","Pose Estimation Confidence","Engagement Level Confidence","Motion Confidence","Group Confidence"]
+
+        for body in bodies:
+            discrete_state[body]["Distance"] = DecisionState.distance_bucket(discrete_state[body]["Distance"])
+            for bf in body_floats:
+                discrete_state[body][bf] = DecisionState.float_bucket(discrete_state[body][bf])
+        return discrete_state
+    
+    def make_state_readable(self,state,discrete_state):
+        readable_state = copy.deepcopy(state)
+
+        # Remove decision
+        del readable_state["DECISION"]
+
+        discretised_variables = ["Mutual Gaze","Engagement Value","Pose Estimation Confidence","Engagement Level Confidence","Motion Confidence","Group Confidence","Distance"]
+        for key in readable_state:
+            for variable in readable_state[key]:
+                var_text = ""
+                if isinstance(readable_state[key][variable],float):
+                    var_text += str(round(readable_state[key][variable],3))
+                elif variable == "Engagement Level":
+                    var_text = MessageHelper.engagement_level_names[readable_state[key][variable]]
+                elif variable == "Motion":
+                    var_text = MessageHelper.motion_activity_names[readable_state[key][variable]]
+                else:
+                    var_text += str(readable_state[key][variable])
+
+                if variable in discretised_variables:
+                    disc_var = discrete_state[key][variable]
+                    if variable != "Distance":
+                        disc_var = round(disc_var/DecisionState.max_float,3)
+                    var_text += " ({})".format(disc_var)
+
+                readable_state[key][variable] = var_text
+        return readable_state
 
     
     '''

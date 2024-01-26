@@ -14,8 +14,9 @@
 
     <node pkg="rosbag" type="play" name="rosbag_play" output="screen" args="$(arg bag_dir)/$(arg exp).bag"/>
 
+    <!-- $(arg pos_img) -->
     <node pkg="rosbag" type="record" name="rosbag_record"
-        args="-O $(arg bag_dir)/logbags/$(arg exp).bag $(arg pos_img) -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups"
+        args="-O $(arg bag_dir)/logbags/$(arg exp).bag  -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups"
         />
 
     <node name="pose" pkg="engage" type="pose.py"

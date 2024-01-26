@@ -1,48 +1,93 @@
 from engage.msg import StateDecision
 
 class DecisionState:
+    max_float = 3
+
     def __init__(self,
-                 time,
-                 body_dict,
-                 group_dict,
-                 group_confidences,
-                 distances,
-                 engagements,
-                 mutual_gazes,
-                 pose_confidences,
-                 waiting
+                 time=None,
+                 body_dict=None,
+                 group_dict=None,
+                 group_confidences=None,
+                 distances=None,
+                 engagements=None,
+                 mutual_gazes=None,
+                 pose_confidences=None,
+                 waiting=None,
+                 from_decision_node=True,
+                 state=None,
+                 bodies=None,
                  ):
-        self.time = time
-        self.bodies = list(body_dict.keys())
-        self.groups = group_dict.copy()
-        self.group_confidences = group_confidences.copy()
-        self.engagement_values = engagements.copy()
-        self.distances = distances.copy()
-        self.mutual_gazes = mutual_gazes.copy()
-        self.pose_confidences = pose_confidences.copy()
+        if from_decision_node:
+            # Create from the various dicts and lists maintained by the decision node
+            self.time = time
+            self.bodies = list(body_dict.keys())
+            self.groups = group_dict.copy()
+            self.group_confidences = group_confidences.copy()
+            self.engagement_values = engagements.copy()
+            self.distances = distances.copy()
+            self.mutual_gazes = mutual_gazes.copy()
+            self.pose_confidences = pose_confidences.copy()
 
-        self.motions = {}
-        self.motion_confidences = {}
-        self.engagement_levels = {}
-        self.engagement_level_confidences = {}
-        for body in body_dict:
-            self.motions[body] = body_dict[body].activity
-            self.motion_confidences[body] = body_dict[body].activity_confidence
-            self.engagement_levels[body] = body_dict[body].engagement_level
-            self.engagement_level_confidences[body] = body_dict[body].engagement_level_confidence
+            self.motions = {}
+            self.motion_confidences = {}
+            self.engagement_levels = {}
+            self.engagement_level_confidences = {}
+            for body in body_dict:
+                self.motions[body] = body_dict[body].activity
+                self.motion_confidences[body] = body_dict[body].activity_confidence
+                self.engagement_levels[body] = body_dict[body].engagement_level
+                self.engagement_level_confidences[body] = body_dict[body].engagement_level_confidence
 
-        self.in_group = {}
-        self.group_with_robot = {}
-        self.robot_in_group = self.check_group("ROBOT")
-        self.robot_group_confidence = self.group_confidences["ROBOT"]
-        self.robot_group_members = []
-        for body in self.bodies:
-            self.in_group[body] = self.check_group(body)
-            self.group_with_robot[body] = self.robot_in_group and (self.groups[body] == self.groups["ROBOT"])
-            if self.group_with_robot:
-                self.robot_group_members.append(body)
+            self.in_group = {}
+            self.group_with_robot = {}
+            self.robot_in_group = self.check_group("ROBOT")
+            self.robot_group_confidence = self.group_confidences["ROBOT"]
+            self.robot_group_members = []
+            for body in self.bodies:
+                self.in_group[body] = self.check_group(body)
+                self.group_with_robot[body] = self.robot_in_group and (self.groups[body] == self.groups["ROBOT"])
+                if self.group_with_robot:
+                    self.robot_group_members.append(body)
 
-        self.waiting = waiting
+            self.waiting = waiting
+        else:
+            # Create from a state
+            self.bodies = bodies
+
+            self.group_confidences = {}
+            self.engagement_values = {}
+            self.distances = {}
+            self.mutual_gazes = {}
+            self.pose_confidences = {}
+            self.motions = {}
+            self.motion_confidences = {}
+            self.engagement_levels = {}
+            self.engagement_level_confidences = {}
+            self.in_group = {}
+            self.group_with_robot = {}
+            self.robot_group_members = []
+
+            for key in state:
+                if key == "GENERAL":
+                    self.waiting = state[key]["Waiting"]
+                elif key == "ROBOT":
+                    self.robot_in_group = state[key]["Group"]
+                    self.robot_group_confidence = state[key]["Group Confidence"]
+                else:
+                    self.group_confidences[key] = state[key]["Group Confidence"]
+                    self.engagement_values[key] = state[key]["Engagement Value"]
+                    self.distances[key] = state[key]["Distance"]
+                    self.mutual_gazes[key] = state[key]["Mutual Gaze"]
+                    self.pose_confidences[key] = state[key]["Pose Estimation Confidence"]
+                    self.motions[key] = state[key]["Motion"]
+                    self.motion_confidences[key] = state[key]["Motion Confidence"]
+                    self.engagement_levels[key] = state[key]["Engagement Level"]
+                    self.engagement_level_confidences[key] = state[key]["Engagement Level Confidence"]
+                    self.in_group[key] = state[key]["Group"]
+                    self.group_with_robot[key] = state[key]["Group with Robot"]
+                    if state[key]["Group with Robot"]:
+                        self.robot_group_members.append(key)
+
 
     def message(self,action,target):
         decision_state = StateDecision()

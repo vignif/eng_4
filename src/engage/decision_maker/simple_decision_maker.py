@@ -23,7 +23,7 @@ class SimpleDecisionMaker:
         elif len(state.bodies) == 0:
             # Nobody to interact with
             action = Decision.NOTHING
-        elif state.robot_in_group:
+        elif state.robot_in_group and len(state.robot_group_members) != 0: # The check for robot group members is there to prevent bugs when intervening on the robot group variable # TODO fix this
             # Robot in a group
             all_engaged = True
             for body in state.robot_group_members:
