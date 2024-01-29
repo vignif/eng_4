@@ -37,13 +37,13 @@ class CounterfactualExplainer:
         influences = self.true_observation.get_influences()
         print("{} influences".format(len(influences)))
 
-        critical_influences,critical_thresholds = self.explain_case(influences,why_not,max_depth=max_depth)
-        return critical_influences,critical_thresholds
+        critical_influences,critical_thresholds,critical_values = self.explain_case(influences,why_not,max_depth=max_depth)
+        return critical_influences,critical_thresholds,critical_values
 
     def explain_case(self,influences,why_not,counterfactual=None,max_depth=2):
         if counterfactual is None:
             counterfactual = self.CF(self.decision_maker)
-        critical_influences,critical_thresholds = self.find_critical_influences(influences,why_not,counterfactual)
+        critical_influences,critical_thresholds,critical_values = self.find_critical_influences(influences,why_not,counterfactual)
 
         if len(critical_influences)==0:
             # Need to find a partial explanation
@@ -58,7 +58,7 @@ class CounterfactualExplainer:
         print(len(critical_influences))
 
         # TODO: replace with complete_explanations,partial_explanations
-        return critical_influences,critical_thresholds
+        return critical_influences,critical_thresholds,critical_values
     
     '''
     
@@ -68,13 +68,14 @@ class CounterfactualExplainer:
     def find_critical_influences(self,influences,why_not,counterfactual):
         critical_influences=[]
         thresholds = []
+        critical_values = []
+
         for var in influences:
             if var in counterfactual.changes:
                 # Ignore variables we have already changed
                 continue
             
             critical_interventions = self.true_observation.critical_interventions(counterfactual.interventions,var)
-            print(critical_interventions)
 
             # TODO: Prune impossible states - maybe by checking causal assumptions, or even by applying DO or similar
             # e.g. for each assignment, get the changes
@@ -88,8 +89,6 @@ class CounterfactualExplainer:
                         outcome = counterfactual.outcome(self.true_observation,counterfactual.intervention_order+[var],ci)
                         valid_outcome = self.true_outcome.valid_outcome(outcome,why_not)
 
-                        print(ci,outcome,valid_outcome)
-
                         if not valid_outcome:
                             all_valid = False
                             break
@@ -99,22 +98,23 @@ class CounterfactualExplainer:
                     if all_valid:
                         critical_influences.append(var)
                         thresholds.append(None)
+                        critical_values.append([self.true_observation.value_of_variable_in_assignment(var,ci)])
                 elif vartype == "Continuous":
                     outcomes = []
+                    values = []
                     for ci in critical_interventions:
                         outcome = counterfactual.outcome(self.true_observation,counterfactual.intervention_order+[var],ci)
                         valid_outcome = self.true_outcome.valid_outcome(outcome,why_not)
 
                         outcomes.append(valid_outcome)
-                        print(ci,outcome,valid_outcome)
+                        values.append(self.true_observation.value_of_variable_in_assignment(var,ci))
                     cia,cib = self.calculate_threshold_index(outcomes)
-                    # TODO: Consider the real value of the variable, how does this affect things?
                     if cia is not None:
                         critical_influences.append(var)
                         thresholds.append((cia,cib))
-                        #thresholds.append(outcomes)
+                        critical_values.append([values[i] for i in range(cia,cib)])
 
-        return critical_influences,thresholds
+        return critical_influences,thresholds,critical_values
     
     '''
     
@@ -124,6 +124,10 @@ class CounterfactualExplainer:
 
     def find_potential_influences(self,influences,why_not,counterfactual,depth):
         combos = itertools.combinations(influences, depth)
+        valid_combos = []
+        valid_assignments = []
+
+        # Search each combination of size depth and see if assignments of interventions of this group of variables results in a valid outcome
         for combo in combos:
             critical_interventions = self.true_observation.critical_interventions_multi(counterfactual.interventions,combo)
             outcomes = []
@@ -133,7 +137,12 @@ class CounterfactualExplainer:
                 valid_outcome = self.true_outcome.valid_outcome(outcome,why_not)
                 outcomes.append(valid_outcome)
                 if valid_outcome:
-                    print(ci)
+                    valid_combos.append(combo)
+                    valid_assignments.append(ci)
+
+        # TODO: Attempt to find at least one critical influence in the groups of variables given their combos
+        print(valid_combos,valid_assignments)
+        
             
 
             

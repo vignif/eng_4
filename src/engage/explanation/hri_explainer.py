@@ -146,6 +146,16 @@ class HRIBodyObservation(Observation):
 
         return self.variable_categories[var]
     
+    def value_of_variable_in_assignment(self,var,assignment):
+        var_name = var.split("_")
+        discrete_val = assignment[var_name[0]][var_name[1]]
+        if self.variable_categories[var_name[1]] == "Categorical":
+            return discrete_val
+        elif self.variable_categories[var_name[1]] == "Continuous" and var_name[1]=="Distance":
+            return discrete_val
+        else:
+            return discrete_val/max(self.variable_cardinalities[var_name[1]])
+    
     def __str__(self) -> str:
         return str(self.state)
     
@@ -282,7 +292,7 @@ class HRIBodyExplainer:
 
         return text_explanation is None,text_explanation 
 
-    def explain(self,display=True,max_depth=2):
+    def explain(self,display=True,max_depth=3):
         self.display = display
         if self.display:
             print("===Observation===")
@@ -293,9 +303,9 @@ class HRIBodyExplainer:
             print(self.query)
 
         cfx = CounterfactualExplainer(self.true_observation,self.true_outcome,HRIBodyCounterfactual,self.decision_maker)
-        critical_influences,critical_thresholds = cfx.explain(self.query,max_depth)
+        critical_influences,critical_thresholds,critical_values = cfx.explain(self.query,max_depth)
 
-        if len(critical_influences)>1:
-            return critical_influences,critical_thresholds,True, None
+        if len(critical_influences)>0:
+            return critical_influences,critical_thresholds,critical_values,True, None
         else:
-            return None,None,False,"No explanations found for max_depth: {}".format(max_depth)
+            return None,None,None,False,"No explanations found for max_depth: {}".format(max_depth)

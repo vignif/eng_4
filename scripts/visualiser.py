@@ -337,17 +337,24 @@ class Visualiser:
         
         # Begin explanation
         self.explanation_list_box.insert("end","Generating explanation...")
-        variables,changes,success,error_message = self.explainer.explain()
+        variables,thresholds,change_values,success,error_message = self.explainer.explain()
 
         self.explanation_list_box.delete(0,"end")
 
         if success:
 
             for i in range(len(variables)):
-                if changes[i] is None:
+                if change_values[i] is None:
                     change_text = "(Any change)"
                 else:
-                    change_text = changes[i]
+                    change_text = "("
+                    for val in change_values[i]:
+                        if isinstance(val,float):
+                            change_text += str(round(val,3)) + ", "
+                        else:
+                            change_text += str(val) + ", "
+                        
+                    change_text = change_text[:-2] + ")"
 
                 self.explanation_list_box.insert("end","{} {}".format(variables[i],change_text))
         else:
