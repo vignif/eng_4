@@ -1,5 +1,7 @@
 import itertools
 
+from engage.explanation.explanation_helper import CounterfactualTree
+
 class Outcome:
     def __init__(self):
         pass
@@ -7,6 +9,27 @@ class Outcome:
 class Observation:
     def __init__(self):
         pass
+
+    @staticmethod
+    def calculate_threshold_index(valid_outcomes):
+        # If there is one contiguous block of Trues, this will return the ends of that block. Otherwise None
+        grouped_L = [(k, sum(1 for i in g)) for k,g in itertools.groupby(valid_outcomes)]
+        if len(grouped_L)<=3 and grouped_L != []:
+            if len(grouped_L)==3:
+                # Only accept False...True...False
+                if grouped_L[0][0] == grouped_L[2][0] and not grouped_L[0][0]:
+                    return grouped_L[0][1],grouped_L[0][1]+grouped_L[1][1]
+            elif len(grouped_L)==2:
+                # Either False...True or True...False
+                if grouped_L[0][0]:
+                    return 0,grouped_L[0][1]
+                else:
+                    return grouped_L[0][1],len(valid_outcomes)
+            else:
+                # Only True or False
+                if grouped_L[0][0]:
+                    return 0,len(valid_outcomes)
+        return None,None
 
 class Counterfactual:
     def __init__(self,decision_maker,intervention_order=[],interventions=[],changes={}):
@@ -52,13 +75,10 @@ class CounterfactualExplainer:
             for i in range(2,max_depth+1):
                 print("Explanations with {} variables".format(i))
                 potential_influences = self.find_potential_influences(influences,why_not,counterfactual,depth=i)
-
-        print("Explanation")
-        print(critical_influences,critical_thresholds)
-        print(len(critical_influences))
-
-        # TODO: replace with complete_explanations,partial_explanations
-        return critical_influences,critical_thresholds,critical_values
+            
+        # TODO: Return an object for explanations
+        else:
+            return critical_influences,critical_thresholds,critical_values
     
     '''
     
@@ -108,7 +128,7 @@ class CounterfactualExplainer:
 
                         outcomes.append(valid_outcome)
                         values.append(self.true_observation.value_of_variable_in_assignment(var,ci))
-                    cia,cib = self.calculate_threshold_index(outcomes)
+                    cia,cib = Observation.calculate_threshold_index(outcomes)
                     if cia is not None:
                         critical_influences.append(var)
                         thresholds.append((cia,cib))
@@ -141,38 +161,24 @@ class CounterfactualExplainer:
                     valid_assignments.append(ci)
 
         # TODO: Attempt to find at least one critical influence in the groups of variables given their combos
-        print(valid_combos,valid_assignments)
+        
+        # Start by grouping counterfactuals of the same variable combinations in their interventions
+        same_combo = {combo:[] for combo in valid_combos}
+        
+        for i in range(len(valid_combos)):
+            same_combo[valid_combos[i]].append(valid_assignments[i])
+        
+        exps = []
+        for combo in same_combo:
+            tree = CounterfactualTree(combo,same_combo[combo],self.true_observation)
+            exp = tree.merge_critical()
+            exps.append(exp)
+
+        return exps
+
         
             
 
-            
-            
-    
-    '''
-    
-    Utility
-    
-    '''
-    
-    def calculate_threshold_index(self,valid_outcomes):
-        # If there is one contiguous block of Trues, this will return the ends of that block. Otherwise None
-        grouped_L = [(k, sum(1 for i in g)) for k,g in itertools.groupby(valid_outcomes)]
-        if len(grouped_L)<=3 and grouped_L != []:
-            if len(grouped_L)==3:
-                # Only accept False...True...False
-                if grouped_L[0][0] == grouped_L[2][0] and not grouped_L[0][0]:
-                    return grouped_L[0][1],grouped_L[0][1]+grouped_L[1][1]
-            elif len(grouped_L)==2:
-                # Either False...True or True...False
-                if grouped_L[0][0]:
-                    return 0,grouped_L[0][1]
-                else:
-                    return grouped_L[0][1],len(valid_outcomes)
-            else:
-                # Only True or False
-                if grouped_L[0][0]:
-                    return 0,len(valid_outcomes)
-        return None,None
 
             
 

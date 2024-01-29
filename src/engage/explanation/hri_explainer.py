@@ -2,6 +2,7 @@ import numpy as np
 import argparse
 import copy
 import itertools
+import collections
 import networkx as nx
 
 from engage.message_helper import MessageHelper
@@ -146,15 +147,37 @@ class HRIBodyObservation(Observation):
 
         return self.variable_categories[var]
     
-    def value_of_variable_in_assignment(self,var,assignment):
+    def value_of_variable_in_assignment(self,var,assignment,discrete=False):
         var_name = var.split("_")
         discrete_val = assignment[var_name[0]][var_name[1]]
-        if self.variable_categories[var_name[1]] == "Categorical":
+        if discrete or self.variable_categories[var_name[1]] == "Categorical":
             return discrete_val
         elif self.variable_categories[var_name[1]] == "Continuous" and var_name[1]=="Distance":
             return discrete_val
         else:
             return discrete_val/max(self.variable_cardinalities[var_name[1]])
+        
+    def form_critical_set(self,variable,values):
+        var_name = variable.split("_")
+        var_range = self.variable_cardinalities[var_name[1]].copy()
+        var_range.remove(self.state[var_name[0]][var_name[1]])
+
+        if self.variable_categories[var_name[1]] == "Categorical":
+            if set(values) == set(var_range):
+                return True
+            else:
+                return False
+        else:
+            valid_vals = []
+            for val in var_range:
+                valid_vals.append(val in values)
+            ta,tb = self.calculate_threshold_index(valid_vals)
+            if ta is not None:
+                return True
+            else:
+                return False
+
+
     
     def __str__(self) -> str:
         return str(self.state)
@@ -292,7 +315,7 @@ class HRIBodyExplainer:
 
         return text_explanation is None,text_explanation 
 
-    def explain(self,display=True,max_depth=3):
+    def explain(self,display=True,max_depth=2):
         self.display = display
         if self.display:
             print("===Observation===")
