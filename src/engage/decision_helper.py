@@ -46,7 +46,7 @@ class DecisionState:
             for body in self.bodies:
                 self.in_group[body] = self.check_group(body)
                 self.group_with_robot[body] = self.robot_in_group and (self.groups[body] == self.groups["ROBOT"])
-                if self.group_with_robot:
+                if self.group_with_robot[body]:
                     self.robot_group_members.append(body)
 
             self.waiting = waiting

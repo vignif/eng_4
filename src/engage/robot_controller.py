@@ -25,7 +25,7 @@ class SimpleARIController:
             motion = "flying"
         motion_msg = PlayMotionActionGoal()
         motion_msg.goal.motion_name = motion
-        #self.motion_action_publisher.publish(motion_msg)
+        self.motion_action_publisher.publish(motion_msg)
 
         '''
         if target is not None or target is None:
