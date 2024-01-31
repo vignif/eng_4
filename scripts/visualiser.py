@@ -9,9 +9,10 @@ import cv2
 import numpy as np
 
 from engage.bagreader import Bagreader
-from engage.message_helper import MessageHelper
+from engage.decision_maker.heuristic_decision import HeuristicDecision
 from engage.explanation.hri_explainer import HRIBodyExplainer
 from engage.decision_maker.simple_decision_maker import SimpleDecisionMaker
+
 
 class Visualiser:
     def __init__(self,
@@ -247,22 +248,23 @@ class Visualiser:
         query_choice_label = tk.Label(self.query_canvas,text="Query:",font="-size 10 -weight bold")
         query_choice_label.place(x=0,y=self.button_height*5,height=self.button_height/2)
 
-        query_choice_action_label = tk.Label(self.query_canvas,text="Action: ",font="-size 10")
-        query_choice_action_label.place(x=0,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width)
+        if self.bagreader.decision_type == "heuristic":
+            query_choice_action_label = tk.Label(self.query_canvas,text="Action: ",font="-size 10")
+            query_choice_action_label.place(x=0,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width)
 
-        self.query_action_choice = tk.StringVar(self.query_canvas,name="query_action_choice")
-        self.query_action_choice.set("None")
-        action_choices = ["None"]+MessageHelper.decision_names
-        self.query_action_dropdown = tk.OptionMenu(self.query_canvas, self.query_action_choice, *action_choices)
-        self.query_action_dropdown.place(x=self.button_width,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width*3)
+            self.query_action_choice = tk.StringVar(self.query_canvas,name="query_action_choice")
+            self.query_action_choice.set("None")
+            action_choices = ["None"]+HeuristicDecision.action_names
+            self.query_action_dropdown = tk.OptionMenu(self.query_canvas, self.query_action_choice, *action_choices)
+            self.query_action_dropdown.place(x=self.button_width,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width*3)
 
-        query_choice_target_label = tk.Label(self.query_canvas,text="Target: ",font="-size 10")
-        query_choice_target_label.place(x=self.button_width*4,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width)
+            query_choice_target_label = tk.Label(self.query_canvas,text="Target: ",font="-size 10")
+            query_choice_target_label.place(x=self.button_width*4,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width)
 
-        self.query_target_choice = tk.StringVar(self.query_canvas,name="query_target_choice")
-        self.query_target_choice.set("None")
-        self.query_target_dropdown = tk.OptionMenu(self.query_canvas, self.query_target_choice, *["None"])
-        self.query_target_dropdown.place(x=self.button_width*5,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width*3)
+            self.query_target_choice = tk.StringVar(self.query_canvas,name="query_target_choice")
+            self.query_target_choice.set("None")
+            self.query_target_dropdown = tk.OptionMenu(self.query_canvas, self.query_target_choice, *["None"])
+            self.query_target_dropdown.place(x=self.button_width*5,y=int(self.button_height*5.5),height=self.button_height/2,width=self.button_width*3)
 
         self.explain_button = tk.Button(self.query_canvas,text="Explain", width=self.button_width*3, command=self.explain)
         self.explain_button.place(x=0, y=int(self.button_height*6),width=self.button_width*3,height=self.button_height)
@@ -286,8 +288,9 @@ class Visualiser:
     def update_query_window(self):
         # Get current decision
         self.true_decision = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
-        if self.bagreader.decision_type == "heuristic": 
-            decision_text = "Decision: <{},{}>".format(self.true_decision.action,self.true_decision.target)
+        if self.bagreader.decision_type == "heuristic":
+            decision_string = self.true_decision.decision_tuple_string()
+            decision_text = "Decision: <{},{}>".format(decision_string[0],decision_string[1])
         self.decision_label.config(text=decision_text)
 
         # Clear old state
@@ -316,15 +319,16 @@ class Visualiser:
         self.explanation_list_box.delete(0,"end")
 
         # Set up new query
-        query_action = self.query_action_choice.get()
-        if query_action == "None":
-            query_action = None
-        query_target = self.query_target_choice.get()
-        if query_target == "None":
-            query_target = None
+        if self.bagreader.decision_type == "heuristic":
+            query_action = self.query_action_choice.get()
+            if query_action == "None":
+                query_action = None
+            query_target = self.query_target_choice.get()
+            if query_target == "None":
+                query_target = None
 
-        real_decision = (self.true_action,self.true_target)
-        query = (query_action,query_target)
+            real_decision = (self.true_decision.action,self.true_decision.target)
+            query = (query_action,query_target)
 
         valid_query,query_message = self.explainer.setup_explanation(self.discrete_state,self.state_bodies,real_decision,query)
 
@@ -527,7 +531,8 @@ class Visualiser:
     def update_decision_view(self):
         decision = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
         if self.bagreader.decision_type == "heuristic": 
-            decision_text = "Decision: <{},{}>".format(decision.action,decision.target)
+            decision_string = decision.decision_tuple_string()
+            decision_text = "Decision: <{},{}>".format(decision_string[0],decision_string[1])
         self.decision_text.config(text=decision_text)
 
     def save_image(self):

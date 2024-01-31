@@ -131,10 +131,12 @@ class Bagreader:
             if self.decision_type == "heuristic":
                 decision_msgs.append(msg)
 
+                decision = HeuristicDecision(msg.action,msg.target)
+                dec_tuple = decision.decision_tuple_string()
                 if msg.target == "":
-                    decisions.append(MessageHelper.decision_names[msg.action])
+                    decisions.append(dec_tuple[0])
                 else:
-                    decisions.append("{}_{}".format(MessageHelper.decision_names[msg.action],msg.target))
+                    decisions.append("{}_{}".format(dec_tuple[0],dec_tuple[1]))
                 times.append(msg.header.stamp.to_sec())
             else:
                 error_message = "Can't process message of type: {}".format(self.message_types[topic])

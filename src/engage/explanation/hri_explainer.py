@@ -5,7 +5,7 @@ import itertools
 import collections
 import networkx as nx
 
-from engage.message_helper import MessageHelper
+from engage.decision_maker.heuristic_decision import HeuristicDecision
 from engage.msg import Decision
 from engage.explanation.counterfactual_explainer import Counterfactual,CounterfactualExplainer,Observation,Outcome
 from engage.explanation.hri_causal_model import SimpleCausalModel
@@ -15,12 +15,12 @@ class HRIBodyOutcome(Outcome):
     def __init__(self,action,target):
         self.target = target
         if isinstance(action,str):
-            self.action = MessageHelper.decision_names.index(action)
+            self.action = HeuristicDecision.action_names.index(action)
         else:
             self.action = action
 
         if self.action is not None:
-            self.action_string = MessageHelper.decision_names[self.action]
+            self.action_string = HeuristicDecision.action_names[self.action]
         else:
             self.action_string = None
 
@@ -311,7 +311,7 @@ class HRIBodyExplainer:
                 elif self.query.target not in self.bodies:
                     text_explanation = "The body {} is not recognised at the time of the decision".format(self.query.target)
                 elif self.query.action in [Decision.NOTHING,Decision.WAIT,Decision.ELICIT_GENERAL]:
-                    text_explanation = "The action {} cannot take a target".format(MessageHelper.decision_names[self.query.action])
+                    text_explanation = "The action {} cannot take a target".format(HeuristicDecision.action_names[self.query.action])
 
         return text_explanation is None,text_explanation 
 

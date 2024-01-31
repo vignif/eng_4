@@ -75,6 +75,8 @@ class CounterfactualExplainer:
             for i in range(2,max_depth+1):
                 print("Explanations with {} variables".format(i))
                 potential_influences = self.find_potential_influences(influences,why_not,counterfactual,depth=i)
+                for exp in potential_influences:
+                    print(exp)
             
         # TODO: Return an object for explanations
         else:
