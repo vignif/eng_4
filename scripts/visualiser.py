@@ -569,7 +569,7 @@ class Visualiser:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Visualise rosbag for HRI engage experiments")
     parser.add_argument("--exp", help="Name of rosbag (without .bag)", default="Approach_0")
-    parser.add_argument("--bag_dir", help="Directory of bag file", default="/home/tamlin/engage/rosbags")
+    parser.add_argument("--bag_dir", help="Directory of bag file", default="~/engage/rosbags")
     parser.add_argument("--image_topic", help="Image topic.", default="/camera/color/image_raw")
     parser.add_argument("--pose_image_topic", help="Pose image topic.", default="/opendr/pose_img")
 

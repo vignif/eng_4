@@ -25,6 +25,7 @@ class PoseEstimationNode:
             depth_image_topic,
             rgb_info_topic,
             depth_info_topic,
+            model_path="~/engage/",
             camera_frame="camera",
             world_frame="map",
             pose_image_topic=None,
@@ -45,8 +46,8 @@ class PoseEstimationNode:
         self.pose_estimator = LightweightOpenPoseLearner(device=device, num_refinement_stages=num_refinement_stages,
                                                          mobilenet_use_stride=use_stride,
                                                          half_precision=half_precision)
-        self.pose_estimator.download(path=".", verbose=True)
-        self.pose_estimator.load("openpose_default")
+        self.pose_estimator.download(path=model_path, verbose=True)
+        self.pose_estimator.load(model_path+"openpose_default")
 
         self.opendr_bridge = ROSBridge()
 
@@ -156,8 +157,8 @@ class PoseEstimationNode:
 
 
 if __name__ == "__main__":
-    default_camera = "head_front_camera"
-    default_camera_frame = "head_front_camera_link"
+    default_camera = "camera"
+    default_camera_frame = "camera_link"
     default_world_frame = "map"
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--rgb_image_topic", help="Topic for rgb image",
@@ -170,6 +171,8 @@ if __name__ == "__main__":
                         type=str, default="/{}/depth/camera_info".format(default_camera))
     parser.add_argument("-p", "--pose_image_topic", help="Topic for publishing annotated pose images",
                         type=str, default=None)
+    parser.add_argument("--model_path", help="Path to the openpose model",
+                        type=str, default="~/engage/")
     parser.add_argument("--camera_frame", help="Frame of the camera",
                         type=str, default=default_camera_frame)
     parser.add_argument("--world_frame", help="Frame of the world",
@@ -201,6 +204,7 @@ if __name__ == "__main__":
         pose_image_topic=args.pose_image_topic,
         camera_frame=args.camera_frame,
         world_frame=args.world_frame,
+        model_path=args.model_path,
         use_stride=use_stride,
         half_precision=half_precision,
         num_refinement_stages=num_refinement_stages
