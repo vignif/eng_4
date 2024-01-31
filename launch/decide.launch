@@ -10,6 +10,8 @@
     <arg name="pos_img" value="/opendr/pose_img"/>
     <arg name="cam_frame" value="sellion_link"/>
     <arg name="world_frame" value="map"/>
+    <arg name="decision_maker" default="heuristic"/>
+    <arg name="robot_controller" default="heuristic_ari_controller"/>
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
 
@@ -31,6 +33,6 @@
         />
 
     <node name="decision" pkg="engage" type="decide.py"
-        args="--robot $(arg robot)"
+        args="-d $(arg decision_maker) -r $(arg robot_controller) --robot $(arg robot)"
         />
 </launch>

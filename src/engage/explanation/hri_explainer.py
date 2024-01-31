@@ -233,7 +233,7 @@ class HRIBodyCounterfactual(Counterfactual):
 
         dm_outcome = self.decision_maker.decide(decision_state)
 
-        return HRIBodyOutcome(dm_outcome[1],dm_outcome[0])
+        return HRIBodyOutcome(dm_outcome.action,dm_outcome.target)
     
     def apply_interventions(self,observation,intervention_order,interventions,causal=True):
         changes = {}

@@ -9,6 +9,7 @@ from engage.decision_maker.heuristic_decision_maker import HeuristicDecisionMake
 from engage.decision_maker.random_robot_decision_maker import RandomRobotDecisionMaker
 from engage.pose_helper import HRIPoseBody
 from engage.decision_maker.heuristic_ari_controller import HeuristicARIController
+from engage.decision_maker.simple_ari_controller import SimpleARIController
 from engage.decision_maker.engage_state import EngageState
 
 class DecisionBody:
@@ -73,6 +74,7 @@ class DecisionNode:
 
     robot_controllers = {
         "heuristic_ari_controller":HeuristicARIController,
+        "simple_ari_controller":SimpleARIController,
     }
 
     def __init__(

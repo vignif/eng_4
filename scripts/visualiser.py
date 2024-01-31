@@ -11,7 +11,7 @@ import numpy as np
 from engage.bagreader import Bagreader
 from engage.decision_maker.heuristic_decision import HeuristicDecision
 from engage.explanation.hri_explainer import HRIBodyExplainer
-from engage.decision_maker.simple_decision_maker import SimpleDecisionMaker
+from engage.decision_maker.heuristic_decision_maker import HeuristicDecisionMaker
 
 
 class Visualiser:
@@ -91,7 +91,8 @@ class Visualiser:
 
         # Explanations
         self.create_explanation_windows()
-        self.decision_maker = SimpleDecisionMaker()
+        if self.bagreader.decision_type == "heuristic":
+            self.decision_maker = HeuristicDecisionMaker()
         self.explainer = HRIBodyExplainer(self.decision_maker)
 
         

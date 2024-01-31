@@ -8,6 +8,12 @@ class Decision:
         # return the associated message object
         raise NotImplementedError
     
+    def decision_tuple(self):
+        raise NotImplementedError
+    
+    def decision_tuple_string(self):
+        raise NotImplementedError
+    
     @staticmethod
     def create_publisher(self,topic,queue_size):
         raise NotImplementedError
