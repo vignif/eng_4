@@ -19,7 +19,9 @@ uint8 SPEECH_BECKON_ROBOT = 3       # Try and attract a person, promising an int
 uint8 SPEECH_BECKON_TABLET = 4      # Try and attract a person, promising an interaction with the robot's interface e.g. "Come and see what's on my tablet"
 uint8 SPEECH_RECAPTURE = 5          # Try and preemptively recapture someone who is leaving e.g. "Are you leaving already?"
 
+
 uint8 gesture
 uint8 gaze
 uint8 speech
+bool wait
 string target

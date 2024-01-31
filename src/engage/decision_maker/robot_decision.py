@@ -14,7 +14,8 @@ class RobotDecision(Decision):
                     "SPEECH_RECAPTURE",
                     ]
 
-    def __init__(self,gesture:int,gaze:int,speech:int,target:str):
+    def __init__(self,wait:bool,gesture:int,gaze:int,speech:int,target:str):
+        self.wait = wait
         self.gesture = gesture
         self.gaze = gaze
         self.speech = speech
@@ -26,6 +27,7 @@ class RobotDecision(Decision):
             msg.header.stamp = time
         else:
             msg.header.stamp = rospy.Time.now()
+        msg.wait = self.wait
         msg.gesture = self.gesture
         msg.gaze = self.gaze
         msg.speech = self.speech
@@ -33,10 +35,11 @@ class RobotDecision(Decision):
         return msg
     
     def decision_tuple(self):
-        return (self.gesture,self.gaze,self.speech,self.target)
+        return (self.wait,self.gesture,self.gaze,self.speech,self.target)
     
     def decision_tuple_string(self):
         return (
+            str(self.wait),
             self.gesture_names[self.gesture],
             self.gaze_names[self.gaze],
             self.speech_names[self.speech],
