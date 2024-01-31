@@ -2,13 +2,14 @@ import rospy
 import argparse
 
 from message_filters import ApproximateTimeSynchronizer, Subscriber
-from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,Decision,PoseArrayUncertain,StateDecision
+from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,PoseArrayUncertain,HeuristicStateDecision,RobotStateDecision
 from hri_msgs.msg import IdsList
 
-from engage.decision_maker.simple_decision_maker import SimpleDecisionMaker
+from engage.decision_maker.heuristic_decision_maker import HeuristicDecisionMaker
+from engage.decision_maker.random_robot_decision_maker import RandomRobotDecisionMaker
 from engage.pose_helper import HRIPoseBody
-from engage.robot_controller import SimpleARIController
-from engage.decision_helper import DecisionState
+from engage.decision_maker.heuristic_ari_controller import HeuristicARIController
+from engage.decision_maker.engage_state import EngageState
 
 class DecisionBody:
     def __init__(self,id):
@@ -61,29 +62,33 @@ class DecisionBody:
 
 class DecisionNode:
     decision_makers = {
-        "simple_decision_maker":SimpleDecisionMaker,
+        "heuristic":HeuristicDecisionMaker,
+        "random_robot":RandomRobotDecisionMaker,
+    }
+
+    decision_state_msgs = {
+        "heuristic":HeuristicStateDecision,
+        "random_robot":RobotStateDecision,
     }
 
     robot_controllers = {
-        "simple__ari_controller":SimpleARIController,
+        "heuristic_ari_controller":HeuristicARIController,
     }
 
     def __init__(
             self,
-            decision_maker="simple_decision_maker",
-            robot_controller="simple__ari_controller",
+            decision_maker="heuristic",
+            robot_controller="heuristic_ari_controller",
             rate=20,
             robot_command=True,
             wait_time=5
     ):
         # Rate
         self.rate = rospy.Rate(rate)
-        self.last_decision_time = None
         self.lock = False
-        self.wait_time = rospy.Duration(wait_time)
 
         # Decision-Maker
-        self.dm = self.decision_makers[decision_maker]()
+        self.dm = self.decision_makers[decision_maker](wait_time=wait_time)
 
         # Robot Controller
         self.robot_command = robot_command
@@ -96,8 +101,9 @@ class DecisionNode:
         self.group_subscriber = rospy.Subscriber("/humans/interactions/groups",Group,self.update_groups)
 
         # Publishers
-        self.decision_publisher = rospy.Publisher("/hri_engage/decisions",Decision,queue_size=1)
-        self.decision_state_publisher = rospy.Publisher("hri_engage/decision_states",StateDecision,queue_size=1)
+        self.decision_state_msg = self.decision_state_msgs[decision_maker]
+        self.decision_publisher = self.dm.decision.create_publisher(topic="/hri_engage/decisions",queue_size=1)
+        self.decision_state_publisher = EngageState.create_publisher(self.decision_state_msg,topic="hri_engage/decision_states",queue_size=1)
 
         # Managing bodies
         self.body_time = None
@@ -152,30 +158,32 @@ class DecisionNode:
             del self.pose_confidences[id]
 
         # Make decision
-        self.state = DecisionState(self.body_time,
-                                   self.bodies,
-                                   self.groups,
-                                   self.group_confidences,
-                                   self.distances,
-                                   self.engagements,
-                                   self.mutual_gazes,
-                                   self.pose_confidences,
-                                   self.is_waiting()
-                                   )
-        target,action = self.dm.decide(self.state)
+        self.state = EngageState()
+        self.state.node_to_state(
+            self.body_time,
+            self.bodies,
+            self.groups,
+            self.group_confidences,
+            self.distances,
+            self.engagements,
+            self.mutual_gazes,
+            self.pose_confidences,
+            self.dm.is_waiting(self.body_time)
+        )
 
-        if action != Decision.NOTHING and action != Decision.WAIT:
-            self.last_decision_time = self.body_time
+
+        decision = self.dm.decide(self.state)
+        self.dm.update_last_decision_time(decision,self.body_time)
 
         # Publish decision
-        self.publish_decision(target,action,self.body_time)
+        self.decision_publisher.publish(decision.message(time=self.body_time))
 
         # Publish state
-        self.publish_decision_state(self.state,action,target)
+        self.decision_state_publisher.publish(self.state.message(decision,self.decision_state_msg))
 
         # Control robot
         if self.robot_command:
-            self.robot_controller.execute_command(target,action,self.bodies,self.body_time)
+            self.robot_controller.execute_command(decision,self.state)
 
         # Unlock
         self.lock = False
@@ -202,31 +210,6 @@ class DecisionNode:
             if id in self.groups:
                 self.groups[id] = group.group_id
                 self.group_confidences[id] = conf
-
-    '''
-    STATE
-    '''
-    def is_waiting(self):
-        if self.last_decision_time is None or self.body_time - self.last_decision_time > self.wait_time:
-            return False
-        else:
-            return True
-
-    '''
-    PUBLISHING
-    '''
-
-    def publish_decision(self,target,action,time):
-        decision = Decision()
-        decision.header.stamp = time
-        decision.decision = action
-        decision.target = target if target is not None else ""
-        self.decision_publisher.publish(decision)
-
-    
-
-    def publish_decision_state(self,state:DecisionState,action:int,target:str):
-        self.decision_state_publisher.publish(state.message(action,target))
         
 
     '''
@@ -240,7 +223,9 @@ class DecisionNode:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--decision_maker", help="Which decision maker will be used",
-                        type=str, default="simple_decision_maker")
+                        type=str, default="heuristic")
+    parser.add_argument("-r", "--robot_controller", help="Which robot controller will be used",
+                        type=str, default="heuristic_ari_controller")
     parser.add_argument("--wait_time", help="Fixed time to wait between decisions",
                         type=float, default=5)
     parser.add_argument("--robot", help="If true, will send commands to the robot",
@@ -255,6 +240,7 @@ if __name__ == "__main__":
     
     decision_node = DecisionNode(
         decision_maker = args.decision_maker,
+        robot_controller = args.robot_controller,
         wait_time = args.wait_time,
         robot_command = robot,
         )

@@ -282,13 +282,12 @@ class Visualiser:
         self.explanation_list_box.place(x=0,y=self.button_height/2,width=int(self.explanation_canvas.winfo_width()),height=6*self.button_height)
 
         self.explanation_widget_created = True
-
-
     
     def update_query_window(self):
         # Get current decision
-        self.true_action,self.true_target = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
-        decision_text = "Decision: <{},{}>".format(self.true_action,self.true_target)
+        self.true_decision = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
+        if self.bagreader.decision_type == "heuristic": 
+            decision_text = "Decision: <{},{}>".format(self.true_decision.action,self.true_decision.target)
         self.decision_label.config(text=decision_text)
 
         # Clear old state
@@ -526,8 +525,9 @@ class Visualiser:
 
 
     def update_decision_view(self):
-        action,target = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
-        decision_text = "Decision: <{},{}>".format(action,target)
+        decision = self.bagreader.get_decision(self.stamps[self.curr_frame].to_sec())
+        if self.bagreader.decision_type == "heuristic": 
+            decision_text = "Decision: <{},{}>".format(decision.action,decision.target)
         self.decision_text.config(text=decision_text)
 
     def save_image(self):
@@ -569,7 +569,7 @@ class Visualiser:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Visualise rosbag for HRI engage experiments")
     parser.add_argument("--exp", help="Name of rosbag (without .bag)", default="Approach_0")
-    parser.add_argument("--bag_dir", help="Directory of bag file", default="~/engage/rosbags")
+    parser.add_argument("--bag_dir", help="Directory of bag file", default=os.getenv("HOME")+"/engage/rosbags")
     parser.add_argument("--image_topic", help="Image topic.", default="/camera/color/image_raw")
     parser.add_argument("--pose_image_topic", help="Pose image topic.", default="/opendr/pose_img")
 

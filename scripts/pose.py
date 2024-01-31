@@ -4,6 +4,8 @@ import numpy as np
 import cv2
 from cv_bridge import CvBridge
 import tf
+import os
+import rospkg
 
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import TransformStamped,Vector3,Quaternion
@@ -25,7 +27,7 @@ class PoseEstimationNode:
             depth_image_topic,
             rgb_info_topic,
             depth_info_topic,
-            model_path="~/engage/",
+            model_path="",
             camera_frame="camera",
             world_frame="map",
             pose_image_topic=None,
@@ -46,6 +48,8 @@ class PoseEstimationNode:
         self.pose_estimator = LightweightOpenPoseLearner(device=device, num_refinement_stages=num_refinement_stages,
                                                          mobilenet_use_stride=use_stride,
                                                          half_precision=half_precision)
+        
+        print("Checking for model directory in {}".format(model_path))
         self.pose_estimator.download(path=model_path, verbose=True)
         self.pose_estimator.load(model_path+"openpose_default")
 
@@ -160,6 +164,10 @@ if __name__ == "__main__":
     default_camera = "camera"
     default_camera_frame = "camera_link"
     default_world_frame = "map"
+
+    rospack = rospkg.RosPack()
+    default_model_path = rospack.get_path('engage') + "/"
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--rgb_image_topic", help="Topic for rgb image",
                         type=str, default="/{}/color/image_raw".format(default_camera))
@@ -172,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--pose_image_topic", help="Topic for publishing annotated pose images",
                         type=str, default=None)
     parser.add_argument("--model_path", help="Path to the openpose model",
-                        type=str, default="~/engage/")
+                        type=str, default=default_model_path)
     parser.add_argument("--camera_frame", help="Frame of the camera",
                         type=str, default=default_camera_frame)
     parser.add_argument("--world_frame", help="Frame of the world",

@@ -11,6 +11,7 @@ from engage.message_helper import MessageHelper
 from engage.marker_visualisation import MarkerMaker
 from engage.decision_helper import DecisionState
 from hri_msgs.msg import Skeleton2D
+from engage.decision_maker.heuristic_decision import HeuristicDecision
 
 CMAP = plt.get_cmap("tab10")
 
@@ -48,6 +49,9 @@ class Bagreader:
         self.cam_bag = cam_bag
         self.log_bag = log_bag
 
+        # Get message types
+        self.message_types,self.decision_type = self.get_message_types()
+
         # Read in the list of bodies
         self.bodies,self.body_count,self.body_times = self.read_bodies()
 
@@ -66,7 +70,20 @@ class Bagreader:
         # State
         self.states,self.state_times,self.state_bodies = self.read_decision_states()
 
-        
+    def get_message_types(self):
+        topic_dict = self.log_bag.get_type_and_topic_info()[1]
+        message_types = {}
+
+        for topic in topic_dict:
+            message_types[topic] = topic_dict[topic][0]
+
+        if message_types["/hri_engage/decisions"] == "engage/HeuristicDecision":
+            decision_type = "heuristic"
+        else:
+            error_message = "Unrecognised decision type: {}".format(message_types["/hri_engage/decisions"])
+            raise NotImplementedError(error_message)
+
+        return message_types,decision_type
 
     def read_bodies(self):
         # Create list of bodies in the rosbag
@@ -111,12 +128,17 @@ class Bagreader:
         decisions = []
         times = []
         for _,msg,_ in self.log_bag.read_messages(topics=[topic]):
-            decision_msgs.append(msg)
-            if msg.target == "":
-                decisions.append(MessageHelper.decision_names[msg.decision])
+            if self.decision_type == "heuristic":
+                decision_msgs.append(msg)
+
+                if msg.target == "":
+                    decisions.append(MessageHelper.decision_names[msg.action])
+                else:
+                    decisions.append("{}_{}".format(MessageHelper.decision_names[msg.action],msg.target))
+                times.append(msg.header.stamp.to_sec())
             else:
-                decisions.append("{}_{}".format(MessageHelper.decision_names[msg.decision],msg.target))
-            times.append(msg.header.stamp.to_sec())
+                error_message = "Can't process message of type: {}".format(self.message_types[topic])
+                raise NotImplementedError(error_message)
         return decisions,times,decision_msgs
 
     
@@ -132,8 +154,9 @@ class Bagreader:
         states["GENERAL"] = {"Waiting":[]}
         states["DECISION"] = {"Action":[],"Target":[]}
         state_times["ROBOT"] = []
+        topic = "/hri_engage/decision_states"
 
-        for _,msg,_ in self.log_bag.read_messages(topics=["/hri_engage/decision_states"]):
+        for _,msg,_ in self.log_bag.read_messages(topics=[topic]):
 
             for i in range(len(msg.bodies)):
                 body = msg.bodies[i]
@@ -167,12 +190,18 @@ class Bagreader:
                 states[body]["Group with Robot"].append(msg.group_with_robot[i])
 
             states["GENERAL"]["Waiting"].append(msg.waiting)
-            states["DECISION"]["Action"].append(msg.decision_action)
-            states["DECISION"]["Target"].append(msg.decision_target)
+            
             states["ROBOT"]["Group"].append(msg.robot_group)
             states["ROBOT"]["Group Confidence"].append(msg.robot_group_confidence)
             state_times["ROBOT"].append(msg.header.stamp.to_sec())
             state_bodies.append(msg.bodies)
+
+            if self.decision_type == "heuristic":
+                states["DECISION"]["Action"].append(msg.decision.action)
+                states["DECISION"]["Target"].append(msg.decision.target)
+            else:
+                error_message = "Can't process message of type: {}".format(self.message_types[topic])
+                raise NotImplementedError(error_message)
 
         return states,state_times,state_bodies
 
@@ -434,10 +463,10 @@ class Bagreader:
     def get_decision(self,time):
         nearest_index = self.nearest_time_within_threshold(time,self.decision_times)
         msg = self.decision_msgs[nearest_index]
-        action = MessageHelper.decision_names[msg.decision]
-        target = msg.target
-        target = None if target == "" else target
-        return action,target
+        if self.decision_type == "heuristic":
+            decision = HeuristicDecision(msg.action,msg.target)
+
+        return decision
     
     def get_state(self,time,time_threshold=0.05):
         state = {}

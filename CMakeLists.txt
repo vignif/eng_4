@@ -58,7 +58,11 @@ add_message_files(
   EngagementLevel.msg
   EngagementValue.msg
   Group.msg
+  HeuristicDecision.msg
+  HeuristicStateDecision.msg
   PoseArrayUncertain.msg
+  RobotDecision.msg
+  RobotStateDecision.msg
 )
 
 ## Generate services in the 'srv' folder

@@ -1,6 +1,7 @@
 <launch>
     <arg name="cam_name" default="camera"/>
     <arg name="exp"/>
+    <arg name="robot" default="True"/>
     <arg name="bag_dir" value="/home/tamlin/engage/rosbags"/>
     <arg name="rgb_img" value="/$(arg cam_name)/color/image_raw"/>
     <arg name="dep_img" value="/$(arg cam_name)/depth/image_rect_raw"/>
@@ -29,6 +30,6 @@
         />
 
     <node name="decision" pkg="engage" type="decide.py"
-        args=""
+        args="--robot $(arg robot)"
         />
 </launch>
