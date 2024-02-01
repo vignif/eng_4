@@ -17,7 +17,7 @@ class HeuristicARIController(RobotController):
         self.gaze_action_publisher = rospy.Publisher("/look_at",PointStamped,queue_size=1)
         self.tts_publisher = rospy.Publisher("/tts/goal",TtsActionGoal,queue_size=1)
 
-    def execute_command(self,decision:HeuristicDecision,state:EngageState):
+    def execute_command(self,decision:HeuristicDecision,state:EngageState,bodies=None):
         if decision.action == HeuristicDecisionMSG.NOTHING or decision.action == HeuristicDecisionMSG.WAIT:
             return None
         elif decision.action == HeuristicDecisionMSG.ELICIT_GENERAL:

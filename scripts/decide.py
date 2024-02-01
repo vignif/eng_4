@@ -81,6 +81,7 @@ class DecisionNode:
             self,
             decision_maker="heuristic",
             robot_controller="heuristic_ari_controller",
+            world_frame="map",
             rate=20,
             robot_command=True,
             wait_time=5
@@ -95,7 +96,7 @@ class DecisionNode:
         # Robot Controller
         self.robot_command = robot_command
         if robot_command:
-            self.robot_controller = self.robot_controllers[robot_controller]()
+            self.robot_controller = self.robot_controllers[robot_controller](world_frame=world_frame)
 
         # Subscribers
         self.body_subscriber = rospy.Subscriber("/humans/bodies/tracked",IdsList,self.manage_bodies)
@@ -185,7 +186,7 @@ class DecisionNode:
 
         # Control robot
         if self.robot_command:
-            self.robot_controller.execute_command(decision,self.state)
+            self.robot_controller.execute_command(decision,self.state,self.bodies)
 
         # Unlock
         self.lock = False
@@ -232,6 +233,8 @@ if __name__ == "__main__":
                         type=float, default=5)
     parser.add_argument("--robot", help="If true, will send commands to the robot",
                         type=str, default="True")
+    parser.add_argument("--world_frame", help="World frame",
+                        type=str, default="map")
     args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("HRIDecide", anonymous=True)
@@ -243,6 +246,7 @@ if __name__ == "__main__":
     decision_node = DecisionNode(
         decision_maker = args.decision_maker,
         robot_controller = args.robot_controller,
+        world_frame=args.world_frame,
         wait_time = args.wait_time,
         robot_command = robot,
         )

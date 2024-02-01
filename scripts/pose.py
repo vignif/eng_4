@@ -162,8 +162,8 @@ class PoseEstimationNode:
 
 if __name__ == "__main__":
     default_camera = "camera"
-    default_camera_frame = "camera_link"
-    default_world_frame = "map"
+    default_camera_frame = "sellion_link"
+    default_world_frame = "base_link"
 
     rospack = rospkg.RosPack()
     default_model_path = rospack.get_path('engage') + "/"

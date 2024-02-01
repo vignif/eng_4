@@ -156,6 +156,7 @@ class HRIPoseBody:
         for cam_coord in camera_coords:
             if cam_coord is not None:
                 world_coord = inversed_transform.dot(np.append(cam_coord,[1]))[0:3]
+                world_coord[0] = abs(world_coord[0])
                 if sum(world_coord)==0:
                     world_coord = None
             else:
@@ -548,4 +549,8 @@ class HRIPoseManager:
         # Now publish the bodies
         for body in self.bodies:
             self.bodies[body].publish()
+
+        # DEBUG
+        for body in self.bodies:
+            print(body,self.bodies[body].pose_3D[HRIPoseBody.joints["nose"]])
 
