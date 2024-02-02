@@ -84,7 +84,8 @@ class DecisionNode:
             world_frame="map",
             rate=20,
             robot_command=True,
-            wait_time=5
+            wait_time=5,
+            **kwargs
     ):
         # Rate
         self.rate = rospy.Rate(rate)
@@ -96,7 +97,7 @@ class DecisionNode:
         # Robot Controller
         self.robot_command = robot_command
         if robot_command:
-            self.robot_controller = self.robot_controllers[robot_controller](world_frame=world_frame)
+            self.robot_controller = self.robot_controllers[robot_controller](world_frame=world_frame,**kwargs)
 
         # Subscribers
         self.body_subscriber = rospy.Subscriber("/humans/bodies/tracked",IdsList,self.manage_bodies)
@@ -235,6 +236,8 @@ if __name__ == "__main__":
                         type=str, default="True")
     parser.add_argument("--world_frame", help="World frame",
                         type=str, default="map")
+    parser.add_argument("--z_offset", help="Offset to z axis when gazing to account for difference between eye and camera positions",
+                        type=float, default=0.3)
     args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("HRIDecide", anonymous=True)
@@ -249,5 +252,6 @@ if __name__ == "__main__":
         world_frame=args.world_frame,
         wait_time = args.wait_time,
         robot_command = robot,
+        z_offset = args.z_offset,
         )
     decision_node.run()

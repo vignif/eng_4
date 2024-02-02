@@ -10,8 +10,10 @@ from engage.decision_maker.robot_decision import RobotDecision
 from engage.decision_maker.engage_state import EngageState
 
 class SimpleARIController(RobotController):
-    def __init__(self,world_frame="base_link") -> None:
+    def __init__(self,world_frame="base_link",z_offset=0.3) -> None:
         self.world_frame = world_frame
+        # Parameters
+        self.z_offset = z_offset
         # Publishers
         self.motion_action_publisher = rospy.Publisher("/play_motion/goal",PlayMotionActionGoal,queue_size=1)
         self.gaze_action_publisher = rospy.Publisher("/look_at",PointStamped,queue_size=1)
@@ -52,6 +54,7 @@ class SimpleARIController(RobotController):
                     # Look at target
                     gaze.header.frame_id = self.world_frame
                     gaze.point = target_pos.position
+                    target_pos.position.z += self.z_offset
                 else:
                     # Gaze ahead
                     # TODO: Maybe a random target instead?
