@@ -478,7 +478,7 @@ class HRIPoseManager:
         self.bodies = {}
         # Visualise
         if visualise:
-            self.marker_pub = rospy.Publisher("/markers",Marker,queue_size=100)
+            self.marker_pub = rospy.Publisher("/hri_engage/markers",Marker,queue_size=100)
 
         # Publishers
         self.body_pub = rospy.Publisher("/humans/bodies/tracked",IdsList,queue_size=1)
@@ -553,8 +553,4 @@ class HRIPoseManager:
         # Now publish the bodies
         for body in self.bodies:
             self.bodies[body].publish()
-
-        # DEBUG
-        for body in self.bodies:
-            print(body,self.bodies[body].pose_3D[HRIPoseBody.joints["nose"]])
 
