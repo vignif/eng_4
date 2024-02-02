@@ -157,6 +157,7 @@ class HRIPoseBody:
             if cam_coord is not None:
                 world_coord = inversed_transform.dot(np.append(cam_coord,[1]))[0:3]
                 world_coord[0] = abs(world_coord[0])
+                world_coord[1] = -world_coord[1]
                 if sum(world_coord)==0:
                     world_coord = None
             else:

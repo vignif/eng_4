@@ -35,29 +35,13 @@ class SimpleARIController(RobotController):
 
             # Gaze
             gaze = PointStamped()
-            gaze.header.stamp = state.time
 
-            target = decision.target
-            target_pos = None
-            if target is not None and bodies is not None and target in bodies:
-                target_pos = bodies[target].position
-
-            if target_pos is not None:
-                # Look at target
-                gaze.header.frame_id = self.world_frame
-                gaze.point = target_pos.position
-            else:
+            if decision.gaze == RobotDecisionMSG.GAZE_AHEAD:
                 # Gaze ahead
                 gaze.header.frame_id = "base_link"
                 gaze.point.x = 1
                 gaze.point.y = 0
                 gaze.point.z = 1.5
-            '''
-            if decision.gaze == RobotDecisionMSG.GAZE_AHEAD:
-                gaze.header.frame_id = "sellion_link"
-                gaze.point.x = 10
-                gaze.point.y = 0
-                gaze.point.z = 0
             elif decision.gaze == RobotDecisionMSG.GAZE_TARGET:
                 target = decision.target
                 target_pos = None
@@ -70,19 +54,22 @@ class SimpleARIController(RobotController):
                     gaze.point = target_pos.position
                 else:
                     # Gaze ahead
-                    gaze.header.frame_id = "sellion_link"
-                    gaze.point.x = 10
+                    # TODO: Maybe a random target instead?
+                    gaze.header.frame_id = "base_link"
+                    gaze.point.x = 1
                     gaze.point.y = 0
-                    gaze.point.z = 0
-            '''
+                    gaze.point.z = 1.5
             self.gaze_action_publisher.publish(gaze)
                 
             # Speech
             speech = None
+            lang_id = "en_GB"
             if decision.speech == RobotDecisionMSG.SPEECH_GREETING_INFORMAL:
-                speech = "Hi!"
+                lang_id = "ca_ES"
+                speech = "Hola!"
             elif decision.speech == RobotDecisionMSG.SPEECH_GREETING_FORMAL:
-                speech = "Good day"
+                lang_id = "ca_ES"
+                speech = "Bon dia!"
             elif decision.speech == RobotDecisionMSG.SPEECH_BECKON_ROBOT:
                 speech = "Come and play with me!"
             elif decision.speech == RobotDecisionMSG.SPEECH_BECKON_TABLET:
@@ -92,7 +79,7 @@ class SimpleARIController(RobotController):
 
             if speech is not None:
                 tts_msg = TtsActionGoal()
-                tts_msg.goal.rawtext.lang_id = "en_gb"
+                tts_msg.goal.rawtext.lang_id = lang_id
                 tts_msg.goal.rawtext.text = speech
                 self.tts_publisher.publish(tts_msg)
 
