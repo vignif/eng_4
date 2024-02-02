@@ -12,8 +12,8 @@
 
     <arg name="bag_dir" default="$(find engage)/rosbags"/>
     <arg name="robot" default="True"/>
-    <arg name="decision_maker" default="heuristic"/>
-    <arg name="robot_controller" default="heuristic_ari_controller"/>
+    <arg name="decision_maker" default="random_robot"/>
+    <arg name="robot_controller" default="simple_ari_controller"/>
     <arg name="z_offset" default="0.3"/>
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
