@@ -156,8 +156,11 @@ class HRIPoseBody:
         for cam_coord in camera_coords:
             if cam_coord is not None:
                 world_coord = inversed_transform.dot(np.append(cam_coord,[1]))[0:3]
-                world_coord[0] = abs(world_coord[0])
-                world_coord[1] = -world_coord[1]
+                
+                if self.world_frame == "base_link" and self.camera_frame == "sellion_link":
+                    # The following changes are necessary for some reason to properly convert to the base_link for the ARI robot
+                    world_coord[0] = abs(world_coord[0])
+                    world_coord[1] = -world_coord[1]
                 if sum(world_coord)==0:
                     world_coord = None
             else:
