@@ -2,7 +2,7 @@
 
 A ros noetic package for planning and executing robot-human elicitations in multi-person unstructured environments. See our [late breaking report at HRI 2024](https://www.iri.upc.edu/groups/perception/#TRAIL_XHRI) to learn more.
 
-![The perception, decision-making and explanation pipeline](./repo/img/teaser.png)
+![The perception, decision-making and explanation pipeline](/repo/img/teaser.png)
 
 # Installation
 
@@ -33,7 +33,7 @@ which takes the following arguments:
 - cam_frame - *default: sellion_link*, the name of the camera frame
 - world_frame - *default: base_link*, the name of the static world frame
 
-Once the node ([/pose](https://github.com/tamlinlove/engage/blob/main/scripts/pose.py)) is running, the following topics will be subscribed/published to:
+Once the node ([/pose](/scripts/pose.py)) is running, the following topics will be subscribed/published to:
 
 ***Subscribed Topics***
 
@@ -59,7 +59,7 @@ In addition to pose estimation, if you want to calculate higher-level features s
 
 `roslaunch engage perceive.launch`
 
-this takes in the same arguments as the *pose.launch* file, but runs a second node ([/engagement](https://github.com/tamlinlove/engage/blob/main/scripts/engagement.py)) dedicated to calculating higher-level features in addition to the pose estimation node described above. The */engagement* node subscribes/publishes to the following topics:
+this takes in the same arguments as the *pose.launch* file, but runs a second node ([/engagement](/scripts/engagement.py)) dedicated to calculating higher-level features in addition to the pose estimation node described above. The */engagement* node subscribes/publishes to the following topics:
 
 ***Subscribed Topics***
 
@@ -78,7 +78,7 @@ this takes in the same arguments as the *pose.launch* file, but runs a second no
 
 ## Decision-Making
 
-On top of low- and high-level perception, this package also supports a decision-making node ([/decide](https://github.com/tamlinlove/engage/blob/main/scripts/decide.py)) which listens to the state published by the */pose* and */engagement* nodes and uses this state to make decisions and optionally control a robot. To run the three nodes together, while recording the relevant topics in rosbags, you can run the following:
+On top of low- and high-level perception, this package also supports a decision-making node ([/decide](/scripts/decide.py)) which listens to the state published by the */pose* and */engagement* nodes and uses this state to make decisions and optionally control a robot. To run the three nodes together, while recording the relevant topics in rosbags, you can run the following:
 
 `roslaunch engage decide.launch exp:=<experiment_name>`
 
