@@ -31,7 +31,7 @@ which takes the following arguments:
 - cam_frame - *default: sellion_link*, the name of the camera frame
 - world_frame - *default: base_link*, the name of the static world frame
 
-Once the node is running, the following topics will be subscribed/published to:
+Once the node ([/pose](https://github.com/tamlinlove/engage/blob/main/scripts/pose.py)) is running, the following topics will be subscribed/published to:
 
 ***Subscribed Topics***
 - /camera/color/image_raw (could be different, see launch file arguments), sensor_msgs/Image - the topic of the RGB image stream
@@ -48,3 +48,24 @@ Once the node is running, the following topics will be subscribed/published to:
 - /humans/bodies/<body_id>/body_orientation, geometry_msgs/Vector3Stamped - the orientation of the torso for each body in the world frame
 - /humans/bodies/<body_id>/face_orientation, geometry_msgs/Vector3Stamped - the orientation of the face for each body in the world frame
 - /humans/bodies/<body_id>/skeleton2d, hri_msgs/Skeleton2D - the 2D skeleton keypoint positions in the camera frame
+
+## High-Level Features
+
+In addition to pose estimation, if you want to calculate higher-level features such as the motion activity, engagement between people and the robot, and group dynamics, you can run the following:
+
+`roslaunch engage perceive.launch`
+
+this takes in the same arguments as the *pose.launch* file, but runs a second node ([/engagement](https://github.com/tamlinlove/engage/blob/main/scripts/engagement.py)) dedicated to calculating higher-level features in addition to the pose estimation node described above. The */engagement* node subscribes/publishes to the following topics:
+
+***Subscribed Topics***
+- /humans/bodies/tracked, hri_msgs/IdsList - the list of random ids for each human body being tracked currently
+- /humans/bodies/<body_id>/poses, engage_msgs/PoseArrayUncertain - the 3D poses and pose confidences for each body in the world frame
+- /humans/bodies/<body_id>/velocity, geometry_msgs/TwistStamped - the velocity vectores for each body in the world frame
+- /humans/bodies/<body_id>/body_orientation, geometry_msgs/Vector3Stamped - the orientation of the torso for each body in the world frame
+- /humans/bodies/<body_id>/face_orientation, geometry_msgs/Vector3Stamped - the orientation of the face for each body in the world frame
+
+***Published Topics***
+- /humans/interactions/engagements, engage_msgs/EngagementValue - tracks the distances, mutual gazes and engagement scores between pairs of people
+- /humans/interactions/groups, engage_msgs/Group - the current social groups
+- /humans/bodies/<body_id>/engagement_status, engage_msgs/EngagementLevel - the engagement status of the person with the robot, can be UNKNOWN, ENGAGED, DISENGAGED, ENGAGING or DISENGAGING
+- /humans/bodies/<body_id>/activity, engage_msgs/MotionActivity - the motion activity of the person, can be NOTHING, WALKING_AWAY, WALKING_TOWARDS or WALKING_PAST
