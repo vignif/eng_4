@@ -8,7 +8,7 @@ This package requires Ubuntu 20.04 and ROS noetic. It also depends on the pyhri 
 
 For python packages required, see the [requirements.txt](https://github.com/tamlinlove/engage/blob/main/requirements.txt) file. Use of a virtual environment, such as [rosvenv](https://github.com/ARoefer/rosvenv), is highly recommended.
 
-Hardware-wise, this package requires an RGB and depth stream from a camera, such as a realsense D435i.
+Hardware-wise, this package requires an RGB and depth stream from a camera, such as a realsense D435i. The robot controller scripts have been tested with a [Pal ARI](https://pal-robotics.com/robots/ari/).
 
 # Usage
 
@@ -34,12 +34,14 @@ which takes the following arguments:
 Once the node ([/pose](https://github.com/tamlinlove/engage/blob/main/scripts/pose.py)) is running, the following topics will be subscribed/published to:
 
 ***Subscribed Topics***
+
 - /camera/color/image_raw (could be different, see launch file arguments), sensor_msgs/Image - the topic of the RGB image stream
 - /camera/depth/image_rect_raw (could be different, see launch file arguments), sensor_msgs/Image - the topic of the depth image stream
 - /camera/color/camera_info (could be different, see launch file arguments), sensor_msgs/CameraInfo - the topic of the RGB camera information
 - /camera/depth/camera_info (could be different, see launch file arguments), sensor_msgs/CameraInfo - the topic of the depth camera information
 
 ***Published Topics***
+
 - /opendr/pose_img (could be different, see launch file arguments), sensor_msgs/Image -  the annotated pose image
 - /humans/bodies/tracked, hri_msgs/IdsList - the list of random ids for each human body being tracked currently
 - /hri_engage/markers, visualization_msgs/Marker - markers for the poses, orientations and velocities of people, mostly for debugging purposes (can be viewed in rviz)
@@ -58,6 +60,7 @@ In addition to pose estimation, if you want to calculate higher-level features s
 this takes in the same arguments as the *pose.launch* file, but runs a second node ([/engagement](https://github.com/tamlinlove/engage/blob/main/scripts/engagement.py)) dedicated to calculating higher-level features in addition to the pose estimation node described above. The */engagement* node subscribes/publishes to the following topics:
 
 ***Subscribed Topics***
+
 - /humans/bodies/tracked, hri_msgs/IdsList - the list of random ids for each human body being tracked currently
 - /humans/bodies/<body_id>/poses, engage_msgs/PoseArrayUncertain - the 3D poses and pose confidences for each body in the world frame
 - /humans/bodies/<body_id>/velocity, geometry_msgs/TwistStamped - the velocity vectores for each body in the world frame
@@ -65,6 +68,7 @@ this takes in the same arguments as the *pose.launch* file, but runs a second no
 - /humans/bodies/<body_id>/face_orientation, geometry_msgs/Vector3Stamped - the orientation of the face for each body in the world frame
 
 ***Published Topics***
+
 - /humans/interactions/engagements, engage_msgs/EngagementValue - tracks the distances, mutual gazes and engagement scores between pairs of people
 - /humans/interactions/groups, engage_msgs/Group - the current social groups
 - /humans/bodies/<body_id>/engagement_status, engage_msgs/EngagementLevel - the engagement status of the person with the robot, can be UNKNOWN, ENGAGED, DISENGAGED, ENGAGING or DISENGAGING
@@ -88,6 +92,7 @@ In addition to the arguments taken in by the *perceive.launch* file, this launch
 The topics which the */decide* node may subscribe/publish to are as follows:
 
 ***Subscribed Topics***
+
 - /humans/bodies/tracked, hri_msgs/IdsList - the list of random ids for each human body being tracked currently
 - /humans/interactions/engagements, engage_msgs/EngagementValue - tracks the distances, mutual gazes and engagement scores between pairs of people
 - /humans/interactions/groups, engage_msgs/Group - the current social groups
@@ -96,6 +101,7 @@ The topics which the */decide* node may subscribe/publish to are as follows:
 - /humans/bodies/<body_id>/engagement_status, engage_msgs/EngagementLevel - the engagement status of the person with the robot, can be UNKNOWN, ENGAGED, DISENGAGED, ENGAGING or DISENGAGING
 
 ***Published Topics***
+
 Depending on the type of decision maker, a different decision and state message type will be employed
 
 - heuristic
