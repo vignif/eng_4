@@ -10,7 +10,7 @@ from engage.decision_maker.heuristic_decision import HeuristicDecision
 from engage.decision_maker.engage_state import EngageState
 
 class HeuristicARIController(RobotController):
-    def __init__(self,world_frame="map") -> None:
+    def __init__(self,world_frame="map",**kwargs) -> None:
         self.world_frame = world_frame
         # Publishers
         self.motion_action_publisher = rospy.Publisher("/play_motion/goal",PlayMotionActionGoal,queue_size=1)

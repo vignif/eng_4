@@ -10,7 +10,7 @@ from engage.decision_maker.robot_decision import RobotDecision
 from engage.decision_maker.engage_state import EngageState
 
 class SimpleARIController(RobotController):
-    def __init__(self,world_frame="base_link",z_offset=0.3) -> None:
+    def __init__(self,world_frame="base_link",z_offset=0.3,**kwargs) -> None:
         self.world_frame = world_frame
         # Parameters
         self.z_offset = z_offset

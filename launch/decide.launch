@@ -1,20 +1,23 @@
 <launch>
-    <arg name="cam_name" default="camera"/>
     <arg name="exp"/>
+
+    <arg name="cam_name" default="camera"/>
+    <arg name="rgb_img" default="/$(arg cam_name)/color/image_raw"/>
+    <arg name="dep_img" default="/$(arg cam_name)/depth/image_rect_raw"/>
+    <arg name="rgb_inf" default="/$(arg cam_name)/color/camera_info"/>
+    <arg name="dep_inf" default="/$(arg cam_name)/depth/camera_info"/>
+    <arg name="pos_img" default="/opendr/pose_img"/>
+    <arg name="cam_frame" default="sellion_link"/>
+    <arg name="world_frame" default="base_link"/>
+
+    <arg name="bag_dir" default="$(find engage)/rosbags"/>
     <arg name="robot" default="True"/>
-    <arg name="bag_dir" value="/home/tamlin/engage/rosbags"/>
-    <arg name="rgb_img" value="/$(arg cam_name)/color/image_raw"/>
-    <arg name="dep_img" value="/$(arg cam_name)/depth/image_rect_raw"/>
-    <arg name="rgb_inf" value="/$(arg cam_name)/color/camera_info"/>
-    <arg name="dep_inf" value="/$(arg cam_name)/depth/camera_info"/>
-    <arg name="pos_img" value="/opendr/pose_img"/>
-    <arg name="cam_frame" value="sellion_link"/>
-    <arg name="world_frame" value="base_link"/>
     <arg name="decision_maker" default="heuristic"/>
     <arg name="robot_controller" default="heuristic_ari_controller"/>
     <arg name="z_offset" default="0.3"/>
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
+    <param name="logbag" type="str" value="$(find engage)"/>
 
     <node pkg="rosbag" type="record" name="rosbag_cam"
         args="-O $(arg bag_dir)/$(arg exp).bag --split --duration=2m /$(arg cam_name)/color/image_raw /$(arg cam_name)/depth/image_rect_raw /$(arg cam_name)/color/camera_info /$(arg cam_name)/depth/camera_info"

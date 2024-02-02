@@ -1,12 +1,13 @@
 <launch>
-    <arg name="cam_name"/>
-    <arg name="rgb_img" value="/$(arg cam_name)/color/image_raw"/>
-    <arg name="dep_img" value="/$(arg cam_name)/depth/image_rect_raw"/>
-    <arg name="rgb_inf" value="/$(arg cam_name)/color/camera_info"/>
-    <arg name="dep_inf" value="/$(arg cam_name)/depth/camera_info"/>
-    <arg name="pos_img" value="/opendr/pose_img"/>
-    <arg name="cam_frame" value="sellion_link"/>
-    <arg name="world_frame" value="map"/>
+    <arg name="cam_name" default="camera"/>
+    <arg name="rgb_img" default="/$(arg cam_name)/color/image_raw"/>
+    <arg name="dep_img" default="/$(arg cam_name)/depth/image_rect_raw"/>
+    <arg name="rgb_inf" default="/$(arg cam_name)/color/camera_info"/>
+    <arg name="dep_inf" default="/$(arg cam_name)/depth/camera_info"/>
+    <arg name="pos_img" default="/opendr/pose_img"/>
+    <arg name="cam_frame" default="sellion_link"/>
+    <arg name="world_frame" default="base_link"/>
+    
     
     <node name="pose" pkg="engage" type="pose.py"
         args="-i $(arg rgb_img) -d $(arg dep_img) -ii $(arg rgb_inf) -di $(arg dep_inf) -p $(arg pos_img) 
