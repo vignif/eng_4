@@ -69,3 +69,44 @@ this takes in the same arguments as the *pose.launch* file, but runs a second no
 - /humans/interactions/groups, engage_msgs/Group - the current social groups
 - /humans/bodies/<body_id>/engagement_status, engage_msgs/EngagementLevel - the engagement status of the person with the robot, can be UNKNOWN, ENGAGED, DISENGAGED, ENGAGING or DISENGAGING
 - /humans/bodies/<body_id>/activity, engage_msgs/MotionActivity - the motion activity of the person, can be NOTHING, WALKING_AWAY, WALKING_TOWARDS or WALKING_PAST
+
+## Decision-Making
+
+On top of low- and high-level perception, this package also supports a decision-making node ([/decide](https://github.com/tamlinlove/engage/blob/main/scripts/decide.py)) which listens to the state published by the */pose* and */engagement* nodes and uses this state to make decisions and optionally control a robot. To run the three nodes together, while recording the relevant topics in rosbags, you can run the following:
+
+`roslaunch engage decide.launch exp:=<experiment_name>`
+
+In addition to the arguments taken in by the *perceive.launch* file, this launch file also takes in the following arguments:
+
+- exp - the name of the experiment, used to name the rosbag files
+- bag_dir - *default: $(find engage)/rosbags*, the directory to save rosbags in
+- robot - *default: True*, if True will send commands to the robot, otherwise will not
+- decision_maker - *default: random_robot*, the name of the decision maker (which reads in a state and makes decisions)
+- robot_controller - *default: simple_ari_controller*, the name of the robot controller (which converts decisions to robot actions)
+- z_offset - *default: 0.3*, the offset above a person's nose which the robot will use as a gaze target (this accounts for a camera placed above the robot's eyes)
+
+The topics which the */decide* node may subscribe/publish to are as follows:
+
+***Subscribed Topics***
+- /humans/bodies/tracked, hri_msgs/IdsList - the list of random ids for each human body being tracked currently
+- /humans/interactions/engagements, engage_msgs/EngagementValue - tracks the distances, mutual gazes and engagement scores between pairs of people
+- /humans/interactions/groups, engage_msgs/Group - the current social groups
+- /humans/bodies/<body_id>/poses, engage_msgs/PoseArrayUncertain - the 3D poses and pose confidences for each body in the world frame
+- /humans/bodies/<body_id>/activity, engage_msgs/MotionActivity - the motion activity of the person, can be NOTHING, WALKING_AWAY, WALKING_TOWARDS or WALKING_PAST
+- /humans/bodies/<body_id>/engagement_status, engage_msgs/EngagementLevel - the engagement status of the person with the robot, can be UNKNOWN, ENGAGED, DISENGAGED, ENGAGING or DISENGAGING
+
+***Published Topics***
+Depending on the type of decision maker, a different decision and state message type will be employed
+
+- heuristic
+  - /hri_engage/decisions, engage_msgs/HeuristicDecision - the decision made
+  - /hri_engage/decision_states, engage_msgs/HeuristicStateDecision - the state used to make the decision
+- random_robot
+  - /hri_engage/decisions, engage_msgs/RobotDecision - the decision made
+  - /hri_engage/decision_states, engage_msgs/RobotStateDecision - the state used to make the decision
+
+If decisions are executed using one of the controller scripts written for the Pal ARI, then the following topics are also published to:
+
+- /play_motion/goal, play_motion_msgs/PlayMotionActionGoal - the motion instructions for the robot
+- /look_at, geometry_msgs/PointStamped - the gaze target for the robot
+- /tts/goal, pal_interaction_msgs/TtsActionGoal - the text-to-speech instructions for the robot
