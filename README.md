@@ -2,11 +2,13 @@
 
 A ros noetic package for planning and executing robot-human elicitations in multi-person unstructured environments. See our [late breaking report at HRI 2024](https://www.iri.upc.edu/groups/perception/#TRAIL_XHRI) to learn more.
 
+![The perception, decision-making and explanation pipeline](/repo/img/teaser.png)
+
 # Installation
 
 This package requires Ubuntu 20.04 and ROS noetic. It also depends on the pyhri and hri_msgs packages for ROS4HRI (installation instructions [here](http://wiki.ros.org/hri/Tutorials/Installation%20of%20a%20ROS4HRI%20environment)), and the [play_motion_msgs](https://github.com/pal-robotics/play_motion) and [pal_interaction_msgs](https://github.com/pal-robotics/pal_msgs) packages from Pal robotics. For pose estimation, this package relies on OpenDR, available [here](https://github.com/opendr-eu/opendr/blob/master/docs/reference/installation.md). Note that this implementation has only been tested with the GPU version of OpenDR, using pytorch 1.13.1+cu117.
 
-For python packages required, see the [requirements.txt](https://github.com/tamlinlove/engage/blob/main/requirements.txt) file. Use of a virtual environment, such as [rosvenv](https://github.com/ARoefer/rosvenv), is highly recommended.
+For python packages required, see the [requirements.txt](requirements.txt) file. Use of a virtual environment, such as [rosvenv](https://github.com/ARoefer/rosvenv), is highly recommended.
 
 Hardware-wise, this package requires an RGB and depth stream from a camera, such as a realsense D435i. The robot controller scripts have been tested with a [Pal ARI](https://pal-robotics.com/robots/ari/).
 
