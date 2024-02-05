@@ -186,19 +186,22 @@ if __name__ == "__main__":
     parser.add_argument("--world_frame", help="Frame of the world",
                         type=str, default=default_world_frame)
     parser.add_argument("--accelerate", help="Activates some acceleration features (e.g. reducing number of refinement steps)",
-                        default=False)
+                        default="False")
     args = parser.parse_args(rospy.myargv()[1:])
 
-    if args.accelerate:
+    false_strings = ["False","false","f","F","0"]
+    accelerate = True
+    if args.accelerate in false_strings:
+        accelerate = False 
+
+    if accelerate:
         use_stride=True
         half_precision=True
         num_refinement_stages=0
     else:
         use_stride=False
         half_precision=False
-        num_refinement_stages=2
-
-    
+        num_refinement_stages=2   
 
     rospy.init_node("HRIPose", anonymous=True)
 

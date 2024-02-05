@@ -10,11 +10,15 @@
     <arg name="cam_frame" default="sellion_link"/>
     <arg name="world_frame" default="base_link"/>
 
+    <arg name="engagement_threshold" default="0.55"/>
+    <arg name="max_angle" default="1.57079632679"/>
+
     <arg name="bag_dir" default="$(find engage)/rosbags"/>
     <arg name="robot" default="True"/>
     <arg name="decision_maker" default="random_robot"/>
     <arg name="robot_controller" default="simple_ari_controller"/>
     <arg name="z_offset" default="0.3"/>
+    <arg name="reduced_action_space" default="True"/>
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
     <param name="logbag" type="str" value="$(find engage)"/>
@@ -33,7 +37,8 @@
         />
 
     <node name="engagement" pkg="engage" type="engagement.py"
-        args="--camera_frame $(arg cam_frame) --world_frame $(arg world_frame)"
+        args="--camera_frame $(arg cam_frame) --world_frame $(arg world_frame) --engagement_threshold ($arg engagement_threshold) 
+        --max_angle ($arg max_angle)"
         />
 
     <node name="decision" pkg="engage" type="decide.py"

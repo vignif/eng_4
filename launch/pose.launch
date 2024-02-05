@@ -7,9 +7,10 @@
     <arg name="pos_img" default="/opendr/pose_img"/>
     <arg name="cam_frame" default="sellion_link"/>
     <arg name="world_frame" default="base_link"/>
+    <arg name="accelerate" default="False"/>
     
     <node name="pose" pkg="engage" type="pose.py"
         args="-i $(arg rgb_img) -d $(arg dep_img) -ii $(arg rgb_inf) -di $(arg dep_inf) -p $(arg pos_img) 
-        --camera_frame $(arg cam_frame) --world_frame $(arg world_frame)"
+        --camera_frame $(arg cam_frame) --world_frame $(arg world_frame) --accelerate $(arg accelerate)"
         />
 </launch>

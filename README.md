@@ -32,6 +32,7 @@ which takes the following arguments:
 - pos_img - *default: /opendr/pose_img*, the name of the topic to which annotated pose images will be published
 - cam_frame - *default: sellion_link*, the name of the camera frame
 - world_frame - *default: base_link*, the name of the static world frame
+- accelerate - *default: False*, if True will use some parameters to improve the pose estimation algorithm's performance
 
 Once the node ([/pose](/scripts/pose.py)) is running, the following topics will be subscribed/published to:
 
@@ -59,13 +60,18 @@ In addition to pose estimation, if you want to calculate higher-level features s
 
 `roslaunch engage perceive.launch`
 
-this takes in the same arguments as the *pose.launch* file, but runs a second node ([/engagement](/scripts/engagement.py)) dedicated to calculating higher-level features in addition to the pose estimation node described above. The */engagement* node subscribes/publishes to the following topics:
+In addition to the arguments in the *pose.launch* file, this takes in the following arguments:
+
+- engagement_threshold - *default: 0.55*, the threshold over which someone is considered engaged
+- max_angle - *default: PI/2*, the angle over which mutual gaze is 0
+
+Launching this file runs, in addition to the */pose* node, a second node ([/engagement](/scripts/engagement.py)) dedicated to calculating higher-level features in addition to the pose estimation node described above. The */engagement* node subscribes/publishes to the following topics:
 
 ***Subscribed Topics***
 
 - /humans/bodies/tracked, hri_msgs/IdsList - the list of random ids for each human body being tracked currently
 - /humans/bodies/<body_id>/poses, engage_msgs/PoseArrayUncertain - the 3D poses and pose confidences for each body in the world frame
-- /humans/bodies/<body_id>/velocity, geometry_msgs/TwistStamped - the velocity vectores for each body in the world frame
+- /humans/bodies/<body_id>/velocity, geometry_msgs/TwistStamped - the velocity vectors for each body in the world frame
 - /humans/bodies/<body_id>/body_orientation, geometry_msgs/Vector3Stamped - the orientation of the torso for each body in the world frame
 - /humans/bodies/<body_id>/face_orientation, geometry_msgs/Vector3Stamped - the orientation of the face for each body in the world frame
 
@@ -90,6 +96,7 @@ In addition to the arguments taken in by the *perceive.launch* file, this launch
 - decision_maker - *default: random_robot*, the name of the decision maker (which reads in a state and makes decisions)
 - robot_controller - *default: simple_ari_controller*, the name of the robot controller (which converts decisions to robot actions)
 - z_offset - *default: 0.3*, the offset above a person's nose which the robot will use as a gaze target (this accounts for a camera placed above the robot's eyes)
+- reduced_action_space - *default: True*, if True will reduce the set of actions available for some decision makers
 
 The topics which the */decide* node may subscribe/publish to are as follows:
 
@@ -99,6 +106,7 @@ The topics which the */decide* node may subscribe/publish to are as follows:
 - /humans/interactions/engagements, engage_msgs/EngagementValue - tracks the distances, mutual gazes and engagement scores between pairs of people
 - /humans/interactions/groups, engage_msgs/Group - the current social groups
 - /humans/bodies/<body_id>/poses, engage_msgs/PoseArrayUncertain - the 3D poses and pose confidences for each body in the world frame
+- /humans/bodies/<body_id>/velocity, geometry_msgs/TwistStamped - the velocity vectors for each body in the world frame
 - /humans/bodies/<body_id>/activity, engage_msgs/MotionActivity - the motion activity of the person, can be NOTHING, WALKING_AWAY, WALKING_TOWARDS or WALKING_PAST
 - /humans/bodies/<body_id>/engagement_status, engage_msgs/EngagementLevel - the engagement status of the person with the robot, can be UNKNOWN, ENGAGED, DISENGAGED, ENGAGING or DISENGAGING
 
