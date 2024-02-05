@@ -14,7 +14,7 @@ Hardware-wise, this package requires an RGB and depth stream from a camera, such
 
 # Usage
 
-In this package there are four main scripts: one for pose estimation, one for calculating high-level features, one for calculating decisions, and one for visualising rosbags and explaining decisions post-hoc.
+In this package there are four main scripts: one for <a href="#pose-estimation">pose estimation</a>, one for calculating <a href="#high-level-features">high-level features</a>, one for <a href="#decision-making">calculating decisions</a>, and one for visualising rosbags and explaining decisions post-hoc.
 
 ## Pose Estimation
 
