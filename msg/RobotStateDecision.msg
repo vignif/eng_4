@@ -2,6 +2,7 @@ Header header
 
 string[] bodies
 string[] group_names
+geometry_msgs/Twist[] velocities
 float32[] distances
 float32[] mutual_gazes
 float32[] engagement_values

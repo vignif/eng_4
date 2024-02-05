@@ -32,11 +32,13 @@ class EngageState(DecisionState):
         self.motion_confidences = {}
         self.engagement_levels = {}
         self.engagement_level_confidences = {}
+        self.velocities = {}
         for body in body_dict:
             self.motions[body] = body_dict[body].activity
             self.motion_confidences[body] = body_dict[body].activity_confidence
             self.engagement_levels[body] = body_dict[body].engagement_level
             self.engagement_level_confidences[body] = body_dict[body].engagement_level_confidence
+            self.velocities[body] = body_dict[body].velocity
 
         self.in_group = {}
         self.group_with_robot = {}
@@ -70,6 +72,8 @@ class EngageState(DecisionState):
         self.in_group = {}
         self.group_with_robot = {}
         self.robot_group_members = []
+        # TODO: Add velocity
+        self.velocities = {}
 
         for key in state:
             if key == "GENERAL":
@@ -98,6 +102,7 @@ class EngageState(DecisionState):
 
         decision_state.bodies = self.bodies
         decision_state.groups = [self.groups[body] for body in self.bodies]
+        decision_state.velocities = [self.velocities[body] for body in self.bodies]
         decision_state.distances = [self.distances[body] if self.distances[body] is not None else 0 for body in self.bodies]
         decision_state.mutual_gazes = [self.mutual_gazes[body] if self.mutual_gazes[body] is not None else 0 for body in self.bodies]
         decision_state.engagement_values = [self.engagement_values[body] if self.engagement_values[body] is not None else 0 for body in self.bodies]

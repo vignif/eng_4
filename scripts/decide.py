@@ -4,6 +4,7 @@ import argparse
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,PoseArrayUncertain,HeuristicStateDecision,RobotStateDecision
 from hri_msgs.msg import IdsList
+from geometry_msgs.msg import TwistStamped,Twist
 
 from engage.decision_maker.heuristic_decision_maker import HeuristicDecisionMaker
 from engage.decision_maker.random_robot_decision_maker import RandomRobotDecisionMaker
@@ -21,8 +22,8 @@ class DecisionBody:
         # Subscribers
         self.engagement_level_subscriber = Subscriber(body_topic+"engagement_status",EngagementLevel)
         self.activity_subscriber = Subscriber(body_topic+"activity",MotionActivity)
-
         self.position_subscriber = rospy.Subscriber("/humans/bodies/{}/poses".format(id),PoseArrayUncertain,self.update_position)
+        self.velocity_subscriber = rospy.Subscriber("/humans/bodies/{}/velocity".format(id),TwistStamped,self.update_velocity)
 
         time_slop = 0.1
         self.synch_sub = ApproximateTimeSynchronizer(
@@ -41,6 +42,7 @@ class DecisionBody:
         self.activity = MotionActivity.NOTHING
         self.activity_confidence = 0
         self.position = None
+        self.velocity = None
 
     def __del__(self):
         self.close()
@@ -60,6 +62,9 @@ class DecisionBody:
     def update_position(self,pose):
         if pose.poses[HRIPoseBody.joints["nose"]] is not None:
             self.position = pose.poses[HRIPoseBody.joints["nose"]]
+
+    def update_velocity(self,vel_msg):
+        self.velocity = vel_msg.twist
 
 class DecisionNode:
     decision_makers = {
