@@ -10,10 +10,43 @@ from engage.decision_maker.robot_decision import RobotDecision
 from engage.decision_maker.engage_state import EngageState
 
 class SimpleARIController(RobotController):
-    def __init__(self,world_frame="base_link",z_offset=0.3,**kwargs) -> None:
+
+    informal_greeting = {
+        "en_GB":"Hi!",
+        "ca_ES":"Hola!",
+    }
+
+    formal_greeting = {
+        "en_GB":"Hello",
+        "ca_ES":"Bon dia",
+    }
+
+    beckon_robot = {
+        "en_GB":"Come and talk with me",
+        "ca_ES":"Apropa't i parla amb mi",
+    }
+
+    beckon_tablet = {
+        "en_GB":"Come and see what's on my tablet",
+        "ca_ES":"Apropa't i mira la meva tauleta",
+    }
+
+    recapture = {
+        "en_GB":"Are you leaving so soon?",
+        "ca_ES":"Marxes tan aviat?",
+    }
+
+    def __init__(self,world_frame="base_link",z_offset=0.3,language="english",**kwargs) -> None:
         self.world_frame = world_frame
         # Parameters
         self.z_offset = z_offset
+        if language == "english" or language == "en_GB":
+            self.lang_id = "en_GB"
+        elif language == "catalan" or language == "ca_ES":
+            self.lang_id = "ca_ES"
+        else:
+            error_message = "Cannot identify language: {}, must be english or catalan".format(language)
+            raise Exception(error_message)
         # Publishers
         self.motion_action_publisher = rospy.Publisher("/play_motion/goal",PlayMotionActionGoal,queue_size=1)
         self.gaze_action_publisher = rospy.Publisher("/look_at",PointStamped,queue_size=1)
@@ -66,23 +99,20 @@ class SimpleARIController(RobotController):
                 
             # Speech
             speech = None
-            lang_id = "en_GB"
             if decision.speech == RobotDecisionMSG.SPEECH_GREETING_INFORMAL:
-                lang_id = "ca_ES"
-                speech = "Hola!"
+                speech = self.informal_greeting[self.lang_id]
             elif decision.speech == RobotDecisionMSG.SPEECH_GREETING_FORMAL:
-                lang_id = "ca_ES"
-                speech = "Bon dia!"
+                speech = self.formal_greeting[self.lang_id]
             elif decision.speech == RobotDecisionMSG.SPEECH_BECKON_ROBOT:
-                speech = "Come and play with me!"
+                speech = self.beckon_robot[self.lang_id]
             elif decision.speech == RobotDecisionMSG.SPEECH_BECKON_TABLET:
-                speech = "Come and see what's on my tablet!"
+                speech = self.beckon_tablet[self.lang_id]
             elif decision.speech == RobotDecisionMSG.SPEECH_RECAPTURE:
-                speech = "Are you leaving so soon?"
+                speech = self.recapture[self.lang_id]
 
             if speech is not None:
                 tts_msg = TtsActionGoal()
-                tts_msg.goal.rawtext.lang_id = lang_id
+                tts_msg.goal.rawtext.lang_id = self.lang_id
                 tts_msg.goal.rawtext.text = speech
                 self.tts_publisher.publish(tts_msg)
 

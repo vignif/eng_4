@@ -32,6 +32,7 @@ class RandomRobotDecisionMaker(DecisionMaker):
             self.allowed_gazes = range(len(RobotDecision.gaze_names))
             self.allowed_speeches = range(len(RobotDecision.speech_names))
 
+
     '''
     DECISION
     '''

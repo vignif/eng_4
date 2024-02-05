@@ -20,6 +20,7 @@
     <arg name="z_offset" default="0.3"/>
     <arg name="reduced_action_space" default="True"/>
     <arg name="record_cam" default="false"/>
+    <arg name="language" default="english"/>
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
     <param name="logbag" type="str" value="$(find engage)"/>
@@ -46,6 +47,7 @@
         />
 
     <node name="decision" pkg="engage" type="decide.py"
-        args="-d $(arg decision_maker) -r $(arg robot_controller) --robot $(arg robot) --world_frame $(arg world_frame) --z_offset $(arg z_offset)"
+        args="-d $(arg decision_maker) -r $(arg robot_controller) --robot $(arg robot) --world_frame $(arg world_frame) 
+        --z_offset $(arg z_offset) --language $(arg language)"
         />
 </launch>

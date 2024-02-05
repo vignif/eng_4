@@ -245,6 +245,8 @@ if __name__ == "__main__":
                         type=float, default=0.3)
     parser.add_argument("--reduced_action_space", help="If True, will limit the action space to a small subset",
                         type=str, default="True")
+    parser.add_argument("--language", help="Language of the robot, can be 'english' or 'catalan'",
+                        type=str, default="english")
     args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("HRIDecide", anonymous=True)
@@ -265,5 +267,6 @@ if __name__ == "__main__":
         robot_command = robot,
         z_offset = args.z_offset,
         reduced_action_space=reduced_action_space,
+        language=args.language,
         )
     decision_node.run()
