@@ -238,13 +238,19 @@ if __name__ == "__main__":
                         type=str, default="map")
     parser.add_argument("--z_offset", help="Offset to z axis when gazing to account for difference between eye and camera positions",
                         type=float, default=0.3)
+    parser.add_argument("--reduced_action_space", help="If True, will limit the action space to a small subset",
+                        type=str, default="True")
     args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("HRIDecide", anonymous=True)
 
+    false_strings = ["False","false","f","F","0"]
     robot = True
-    if args.robot in ["False","false","f","F","0"]:
+    reduced_action_space = True
+    if args.robot in false_strings:
         robot = False
+    if args.reduced_action_space in false_strings:
+        reduced_action_space = False
     
     decision_node = DecisionNode(
         decision_maker = args.decision_maker,
@@ -253,5 +259,6 @@ if __name__ == "__main__":
         wait_time = args.wait_time,
         robot_command = robot,
         z_offset = args.z_offset,
+        reduced_action_space=reduced_action_space,
         )
     decision_node.run()

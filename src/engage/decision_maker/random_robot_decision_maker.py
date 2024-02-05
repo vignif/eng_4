@@ -8,10 +8,29 @@ from engage.decision_maker.decision_maker import DecisionMaker
 
 
 class RandomRobotDecisionMaker(DecisionMaker):
-    def __init__(self,wait_time=5,**kwargs):
+    def __init__(self,wait_time=5,reduced_action_space=False,**kwargs):
         self.wait_time = rospy.Duration(wait_time)
 
         self.last_decision_time = None
+        self.reduced_action_space = reduced_action_space
+
+        if self.reduced_action_space:
+            self.allowed_gestures = [
+                RobotDecisionMSG.GESTURE_NOTHING,
+                RobotDecisionMSG.GESTURE_WAVE
+            ]
+
+            self.allowed_gazes = range(len(RobotDecision.gaze_names))
+
+            self.allowed_speeches = [
+                RobotDecisionMSG.SPEECH_NOTHING,
+                RobotDecisionMSG.SPEECH_BECKON_ROBOT
+            ]
+        else:
+            # Full action space
+            self.allowed_gestures = range(len(RobotDecision.gesture_names))
+            self.allowed_gazes = range(len(RobotDecision.gaze_names))
+            self.allowed_speeches = range(len(RobotDecision.speech_names))
 
     '''
     DECISION
@@ -33,9 +52,9 @@ class RandomRobotDecisionMaker(DecisionMaker):
                 None,
             )
         else:
-            random_gesture = np.random.choice(range(len(RobotDecision.gesture_names)))
-            random_gaze = np.random.choice(range(len(RobotDecision.gaze_names)))
-            random_speech = np.random.choice(range(len(RobotDecision.speech_names)))
+            random_gesture = np.random.choice(self.allowed_gestures)
+            random_gaze = np.random.choice(self.allowed_gazes)
+            random_speech = np.random.choice(self.allowed_speeches)
             random_target = np.random.choice(state.bodies+[None])
 
             return RobotDecision(False,random_gesture,random_gaze,random_speech,random_target)
