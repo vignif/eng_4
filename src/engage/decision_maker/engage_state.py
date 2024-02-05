@@ -1,6 +1,7 @@
 import rospy
 
 from engage.decision_maker.decision_maker import DecisionState,Decision
+from geometry_msgs.msg import Twist
 
 class EngageState(DecisionState):
     def __init__(self) -> None:
@@ -100,9 +101,17 @@ class EngageState(DecisionState):
         decision_state = msg()
         decision_state.header.stamp = self.time
 
+        empty_velocity = Twist()
+        empty_velocity.linear.x = 0
+        empty_velocity.linear.y = 0
+        empty_velocity.linear.z = 0
+        empty_velocity.angular.x = 0
+        empty_velocity.angular.y = 0
+        empty_velocity.angular.z = 0
+
         decision_state.bodies = self.bodies
         decision_state.groups = [self.groups[body] for body in self.bodies]
-        decision_state.velocities = [self.velocities[body] for body in self.bodies]
+        decision_state.velocities = [self.velocities[body] if self.velocities[body] is not None else empty_velocity for body in self.bodies]
         decision_state.distances = [self.distances[body] if self.distances[body] is not None else 0 for body in self.bodies]
         decision_state.mutual_gazes = [self.mutual_gazes[body] if self.mutual_gazes[body] is not None else 0 for body in self.bodies]
         decision_state.engagement_values = [self.engagement_values[body] if self.engagement_values[body] is not None else 0 for body in self.bodies]
