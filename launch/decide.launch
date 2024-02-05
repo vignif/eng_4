@@ -21,6 +21,7 @@
     <arg name="reduced_action_space" default="True"/>
     <arg name="record_cam" default="false"/>
     <arg name="language" default="english"/>
+    <arg name="rosbag_duration" default="2"/>
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
     <param name="logbag" type="str" value="$(find engage)"/>
@@ -28,7 +29,7 @@
     
     <group if="$(arg record_cam)">
         <node pkg="rosbag" type="record" name="rosbag_cam"
-            args="-O $(arg bag_dir)/$(arg exp).bag --split --duration=2m /$(arg cam_name)/color/image_raw /$(arg cam_name)/depth/image_rect_raw /$(arg cam_name)/color/camera_info /$(arg cam_name)/depth/camera_info"
+            args="-O $(arg bag_dir)/$(arg exp).bag --split --duration=$(arg rosbag_duration)m /$(arg cam_name)/color/image_raw /$(arg cam_name)/depth/image_rect_raw /$(arg cam_name)/color/camera_info /$(arg cam_name)/depth/camera_info"
             />
     </group>
 
@@ -48,6 +49,6 @@
 
     <node name="decision" pkg="engage" type="decide.py"
         args="-d $(arg decision_maker) -r $(arg robot_controller) --robot $(arg robot) --world_frame $(arg world_frame) 
-        --z_offset $(arg z_offset) --language $(arg language)"
+        --z_offset $(arg z_offset) --language $(arg language) --reduced_action_space $(arg reduced_action_space)"
         />
 </launch>

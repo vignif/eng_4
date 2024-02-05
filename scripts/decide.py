@@ -51,6 +51,7 @@ class DecisionBody:
         self.engagement_level_subscriber.sub.unregister()
         self.activity_subscriber.sub.unregister()
         self.position_subscriber.unregister()
+        self.velocity_subscriber.unregister()
 
 
     def update_body(self,engagement_level,activity):
@@ -97,7 +98,10 @@ class DecisionNode:
         self.lock = False
 
         # Decision-Maker
-        self.dm = self.decision_makers[decision_maker](wait_time=wait_time)
+        self.dm = self.decision_makers[decision_maker](
+            wait_time=wait_time,
+            reduced_action_space = reduced_action_space,
+            )
 
         # Robot Controller
         self.robot_command = robot_command
@@ -251,7 +255,7 @@ if __name__ == "__main__":
 
     rospy.init_node("HRIDecide", anonymous=True)
 
-    false_strings = ["False","false","f","F","0"]
+    false_strings = ["False","false","f","F","0",False]
     robot = True
     reduced_action_space = True
     if args.robot in false_strings:

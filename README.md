@@ -99,6 +99,7 @@ In addition to the arguments taken in by the *perceive.launch* file, this launch
 - reduced_action_space - *default: True*, if True will reduce the set of actions available for some decision makers
 - record_cam - *default: false*, if true will record the raw RGB and depth streams
 - language - *default: english*, the language the robot will speak (currently supports english and catalan)
+- rosbag_duration - *default: 2*, the number of minutes long each rosbag will be
 
 The topics which the */decide* node may subscribe/publish to are as follows:
 

@@ -15,6 +15,7 @@ class RandomRobotDecisionMaker(DecisionMaker):
         self.reduced_action_space = reduced_action_space
 
         if self.reduced_action_space:
+            # Reduced action space
             self.allowed_gestures = [
                 RobotDecisionMSG.GESTURE_NOTHING,
                 RobotDecisionMSG.GESTURE_WAVE

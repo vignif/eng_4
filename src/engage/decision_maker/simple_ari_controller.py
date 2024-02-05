@@ -33,7 +33,7 @@ class SimpleARIController(RobotController):
 
     recapture = {
         "en_GB":"Are you leaving so soon?",
-        "ca_ES":"Marxes tan aviat?",
+        "ca_ES":"Ja marxes?",
     }
 
     def __init__(self,world_frame="base_link",z_offset=0.3,language="english",**kwargs) -> None:
