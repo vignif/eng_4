@@ -97,6 +97,7 @@ In addition to the arguments taken in by the *perceive.launch* file, this launch
 - robot_controller - *default: simple_ari_controller*, the name of the robot controller (which converts decisions to robot actions)
 - z_offset - *default: 0.3*, the offset above a person's nose which the robot will use as a gaze target (this accounts for a camera placed above the robot's eyes)
 - reduced_action_space - *default: True*, if True will reduce the set of actions available for some decision makers
+- record_cam - *default: false*, if true will record the raw RGB and depth streams
 
 The topics which the */decide* node may subscribe/publish to are as follows:
 

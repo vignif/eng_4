@@ -19,7 +19,7 @@
         />
 
     <node name="engagement" pkg="engage" type="engagement.py"
-        args="--camera_frame $(arg cam_frame) --world_frame $(arg world_frame) --engagement_threshold ($arg engagement_threshold) 
-        --max_angle ($arg max_angle)"
+        args="--camera_frame $(arg cam_frame) --world_frame $(arg world_frame) --engagement_threshold $(arg engagement_threshold) 
+        --max_angle $(arg max_angle)"
         />
 </launch>

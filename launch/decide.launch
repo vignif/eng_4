@@ -19,13 +19,17 @@
     <arg name="robot_controller" default="simple_ari_controller"/>
     <arg name="z_offset" default="0.3"/>
     <arg name="reduced_action_space" default="True"/>
+    <arg name="record_cam" default="false"/>
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
     <param name="logbag" type="str" value="$(find engage)"/>
 
-    <node pkg="rosbag" type="record" name="rosbag_cam"
-        args="-O $(arg bag_dir)/$(arg exp).bag --split --duration=2m /$(arg cam_name)/color/image_raw /$(arg cam_name)/depth/image_rect_raw /$(arg cam_name)/color/camera_info /$(arg cam_name)/depth/camera_info"
-        />
+    
+    <group if="$(arg record_cam)">
+        <node pkg="rosbag" type="record" name="rosbag_cam"
+            args="-O $(arg bag_dir)/$(arg exp).bag --split --duration=2m /$(arg cam_name)/color/image_raw /$(arg cam_name)/depth/image_rect_raw /$(arg cam_name)/color/camera_info /$(arg cam_name)/depth/camera_info"
+            />
+    </group>
 
     <node pkg="rosbag" type="record" name="rosbag_record"
         args="-O $(arg bag_dir)/logbags/$(arg exp).bag --split --duration=2m  -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups"
@@ -37,8 +41,8 @@
         />
 
     <node name="engagement" pkg="engage" type="engagement.py"
-        args="--camera_frame $(arg cam_frame) --world_frame $(arg world_frame) --engagement_threshold ($arg engagement_threshold) 
-        --max_angle ($arg max_angle)"
+        args="--camera_frame $(arg cam_frame) --world_frame $(arg world_frame) --engagement_threshold $(arg engagement_threshold) 
+        --max_angle $(arg max_angle)"
         />
 
     <node name="decision" pkg="engage" type="decide.py"
