@@ -22,6 +22,8 @@
     <arg name="record_cam" default="false"/>
     <arg name="language" default="english"/>
     <arg name="rosbag_duration" default="2"/>
+    <arg name="wait_time" default="5"/>
+    <arg name="wait_deviation" default="1"/>
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
     <param name="logbag" type="str" value="$(find engage)"/>
@@ -47,8 +49,9 @@
         --max_angle $(arg max_angle)"
         />
 
-    <node name="decision" pkg="engage" type="decide.py"
+    <node name="decision" pkg="engage" type="decide.py" output="screen"
         args="-d $(arg decision_maker) -r $(arg robot_controller) --robot $(arg robot) --world_frame $(arg world_frame) 
-        --z_offset $(arg z_offset) --language $(arg language) --reduced_action_space $(arg reduced_action_space)"
+        --z_offset $(arg z_offset) --language $(arg language) --reduced_action_space $(arg reduced_action_space)
+        --wait_time $(arg wait_time) --wait_deviation $(arg wait_deviation)"
         />
 </launch>

@@ -91,6 +91,8 @@ class DecisionNode:
             rate=20,
             robot_command=True,
             wait_time=5,
+            wait_deviation=1,
+            reduced_action_space=False,
             **kwargs
     ):
         # Rate
@@ -100,6 +102,7 @@ class DecisionNode:
         # Decision-Maker
         self.dm = self.decision_makers[decision_maker](
             wait_time=wait_time,
+            wait_deviation=wait_deviation,
             reduced_action_space = reduced_action_space,
             )
 
@@ -239,8 +242,10 @@ if __name__ == "__main__":
                         type=str, default="heuristic")
     parser.add_argument("-r", "--robot_controller", help="Which robot controller will be used",
                         type=str, default="heuristic_ari_controller")
-    parser.add_argument("--wait_time", help="Fixed time to wait between decisions",
+    parser.add_argument("--wait_time", help="Mean time to wait between decisions",
                         type=float, default=5)
+    parser.add_argument("--wait_deviation", help="Standard deviation of wait times. If 0, will be always the mean time",
+                        type=float, default=1)
     parser.add_argument("--robot", help="If true, will send commands to the robot",
                         type=str, default="True")
     parser.add_argument("--world_frame", help="World frame",
@@ -268,6 +273,7 @@ if __name__ == "__main__":
         robot_controller = args.robot_controller,
         world_frame=args.world_frame,
         wait_time = args.wait_time,
+        wait_deviation = args.wait_deviation,
         robot_command = robot,
         z_offset = args.z_offset,
         reduced_action_space=reduced_action_space,

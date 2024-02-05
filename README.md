@@ -96,7 +96,9 @@ In addition to the arguments taken in by the *perceive.launch* file, this launch
 - decision_maker - *default: random_robot*, the name of the decision maker (which reads in a state and makes decisions)
 - robot_controller - *default: simple_ari_controller*, the name of the robot controller (which converts decisions to robot actions)
 - z_offset - *default: 0.3*, the offset above a person's nose which the robot will use as a gaze target (this accounts for a camera placed above the robot's eyes)
-- reduced_action_space - *default: True*, if True will reduce the set of actions available for some decision makers
+- reduced_action_space - *default: True*, if True will reduce the set of actions available for some decision makersç
+- wait_time - *default: 5*, mean time to wait between decisions
+- wait_deviation - *default: 1*, standard deviation of wait times, if 0 will be fixed
 - record_cam - *default: false*, if true will record the raw RGB and depth streams
 - language - *default: english*, the language the robot will speak (currently supports english and catalan)
 - rosbag_duration - *default: 2*, the number of minutes long each rosbag will be
