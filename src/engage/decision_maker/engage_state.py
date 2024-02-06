@@ -4,6 +4,10 @@ from engage.decision_maker.decision_maker import DecisionState,Decision
 from geometry_msgs.msg import Twist
 
 class EngageState(DecisionState):
+
+    engagement_level_names = ["UNKNOWN","DISENGAGED","ENGAGING","ENGAGED","DISENGAGING"]
+    motion_names = ["NOTHING","WALKING_AWAY","WALKING_TOWARDS","WALKING_PAST"]
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -97,6 +101,7 @@ class EngageState(DecisionState):
                 if state[key]["Group with Robot"]:
                     self.robot_group_members.append(key)
 
+
     def message(self,decision:Decision,msg):
         decision_state = msg()
         decision_state.header.stamp = self.time
@@ -130,6 +135,65 @@ class EngageState(DecisionState):
         decision_state.decision = decision.message(self.time)
 
         return decision_state
+    
+    @staticmethod
+    def create_state_dicts(decision:Decision):
+        states = {}
+        state_bodies = []
+        state_times = {}
+        states["ROBOT"] = {"Group":[],"Group Confidence":[]}
+        states["GENERAL"] = {"Waiting":[]}
+        states["DECISION"] = {}
+        for component in decision.component_names:
+            states["DECISION"][component] = []
+        state_times["ROBOT"] = []
+
+        return states,state_bodies,state_times
+
+    @staticmethod
+    def update_state_dicts_from_msg(states,state_bodies,state_times,msg,decision:Decision):
+        for i in range(len(msg.bodies)):
+            body = msg.bodies[i]
+
+            if body not in states:
+                states[body] = {}
+                state_times[body] = []
+                states[body]["Distance"] = []
+                states[body]["Mutual Gaze"] = []
+                states[body]["Engagement Value"] = []
+                states[body]["Pose Estimation Confidence"] = []
+                states[body]["Engagement Level"] = []
+                states[body]["Engagement Level Confidence"] = []
+                states[body]["Motion"] = []
+                states[body]["Motion Confidence"] = []
+                states[body]["Group"] = []
+                states[body]["Group Confidence"] = []
+                states[body]["Group with Robot"] = []
+
+            state_times[body].append(msg.header.stamp.to_sec())
+            states[body]["Distance"].append(msg.distances[i])
+            states[body]["Mutual Gaze"].append(msg.mutual_gazes[i])
+            states[body]["Engagement Value"].append(msg.engagement_values[i])
+            states[body]["Pose Estimation Confidence"].append(msg.pose_estimation_confidences[i])
+            states[body]["Engagement Level"].append(msg.engagement_levels[i])
+            states[body]["Engagement Level Confidence"].append(msg.engagement_level_confidences[i])
+            states[body]["Motion"].append(msg.motion_activities[i])
+            states[body]["Motion Confidence"].append(msg.motion_activity_confidences[i])
+            states[body]["Group"].append(msg.groups[i])
+            states[body]["Group Confidence"].append(msg.group_confidences[i])
+            states[body]["Group with Robot"].append(msg.group_with_robot[i])
+
+        states["GENERAL"]["Waiting"].append(msg.waiting)
+        
+        states["ROBOT"]["Group"].append(msg.robot_group)
+        states["ROBOT"]["Group Confidence"].append(msg.robot_group_confidence)
+        state_times["ROBOT"].append(msg.header.stamp.to_sec())
+        state_bodies.append(msg.bodies)
+
+        # TODO: Decision
+        states = decision.update_state_decision(states,msg.decision)
+
+        return states,state_bodies,state_times
     
     @staticmethod
     def create_publisher(msg,topic="hri_engage/decision_states",queue_size=1):

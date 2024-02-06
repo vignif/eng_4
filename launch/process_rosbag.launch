@@ -1,25 +1,36 @@
 <launch>
-    <arg name="cam_name" default="camera"/>
     <arg name="exp"/>
+
+    <arg name="cam_name" default="camera"/>
+    <arg name="rgb_img" default="/$(arg cam_name)/color/image_raw"/>
+    <arg name="dep_img" default="/$(arg cam_name)/depth/image_rect_raw"/>
+    <arg name="rgb_inf" default="/$(arg cam_name)/color/camera_info"/>
+    <arg name="dep_inf" default="/$(arg cam_name)/depth/camera_info"/>
+    <arg name="pos_img" default="/opendr/pose_img"/>
+    <arg name="cam_frame" default="sellion_link"/>
+    <arg name="world_frame" default="base_link"/>
+
+    <arg name="engagement_threshold" default="0.55"/>
+    <arg name="max_angle" default="1.57079632679"/>
+
+    <arg name="bag_dir" default="$(find engage)/rosbags"/>
     <arg name="robot" default="True"/>
-    <arg name="bag_dir" value="/home/tamlin/engage/rosbags"/>
-    <arg name="rgb_img" value="/$(arg cam_name)/color/image_raw"/>
-    <arg name="dep_img" value="/$(arg cam_name)/depth/image_rect_raw"/>
-    <arg name="rgb_inf" value="/$(arg cam_name)/color/camera_info"/>
-    <arg name="dep_inf" value="/$(arg cam_name)/depth/camera_info"/>
-    <arg name="pos_img" value="/opendr/pose_img"/>
-    <arg name="cam_frame" value="sellion_link"/>
-    <arg name="world_frame" value="map"/>
-    <arg name="decision_maker" default="heuristic"/>
-    <arg name="robot_controller" default="heuristic_ari_controller"/>
+    <arg name="decision_maker" default="random_robot"/>
+    <arg name="robot_controller" default="simple_ari_controller"/>
+    <arg name="z_offset" default="0.3"/>
+    <arg name="reduced_action_space" default="True"/>
+    <arg name="language" default="english"/>
+    <arg name="wait_time" default="5"/>
+    <arg name="wait_deviation" default="1"/>
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
+    <param name="logbag" type="str" value="$(find engage)"/>
 
+    
     <node pkg="rosbag" type="play" name="rosbag_play" output="screen" args="$(arg bag_dir)/$(arg exp).bag"/>
 
-    <!-- $(arg pos_img) -->
     <node pkg="rosbag" type="record" name="rosbag_record"
-        args="-O $(arg bag_dir)/logbags/$(arg exp).bag  -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups"
+        args="-O $(arg bag_dir)/logbags/$(arg exp).bag -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups"
         />
 
     <node name="pose" pkg="engage" type="pose.py"
@@ -28,10 +39,13 @@
         />
 
     <node name="engagement" pkg="engage" type="engagement.py"
-        args="--camera_frame $(arg cam_frame) --world_frame $(arg world_frame)"
+        args="--camera_frame $(arg cam_frame) --world_frame $(arg world_frame) --engagement_threshold $(arg engagement_threshold) 
+        --max_angle $(arg max_angle)"
         />
 
-    <node name="decision" pkg="engage" type="decide.py"
-        args="-d $(arg decision_maker) -r $(arg robot_controller) --robot $(arg robot)"
+    <node name="decision" pkg="engage" type="decide.py" output="screen"
+        args="-d $(arg decision_maker) -r $(arg robot_controller) --robot $(arg robot) --world_frame $(arg world_frame) 
+        --z_offset $(arg z_offset) --language $(arg language) --reduced_action_space $(arg reduced_action_space)
+        --wait_time $(arg wait_time) --wait_deviation $(arg wait_deviation)"
         />
 </launch>

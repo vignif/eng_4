@@ -73,7 +73,7 @@ class SimpleARIController(RobotController):
 
             if decision.gaze == RobotDecisionMSG.GAZE_AHEAD:
                 # Gaze ahead
-                gaze.header.frame_id = "base_link"
+                gaze.header.frame_id = self.world_frame
                 gaze.point.x = 1
                 gaze.point.y = 0
                 gaze.point.z = 1.5
@@ -86,12 +86,18 @@ class SimpleARIController(RobotController):
                 if target_pos is not None:
                     # Look at target
                     gaze.header.frame_id = self.world_frame
+
+                    
                     gaze.point = target_pos.position
+                    if self.world_frame == "base_link" and self.camera_frame == "sellion_link":
+                    # The following changes are necessary for some reason to properly convert to the base_link for the ARI robot
+                        target_pos.position.x = abs(target_pos.position.x)
+                        target_pos.position.y = -target_pos.position.y
                     target_pos.position.z += self.z_offset
                 else:
                     # Gaze ahead
                     # TODO: Maybe a random target instead?
-                    gaze.header.frame_id = "base_link"
+                    gaze.header.frame_id = self.world_frame
                     gaze.point.x = 1
                     gaze.point.y = 0
                     gaze.point.z = 1.5

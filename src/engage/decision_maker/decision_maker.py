@@ -1,6 +1,8 @@
 from engage.msg import HeuristicDecision as HeuristicDecisionMSG
 
 class Decision:
+    component_names = ["Decision"]
+
     def __init__(self) -> None:
         pass
 

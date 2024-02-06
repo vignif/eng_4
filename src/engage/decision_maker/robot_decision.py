@@ -13,6 +13,8 @@ class RobotDecision(Decision):
                     "SPEECH_BECKON_TABLET",
                     "SPEECH_RECAPTURE",
                     ]
+    
+    component_names = ["Wait","Gesture","Gaze","Speech","Target"]
 
     def __init__(self,wait:bool,gesture:int,gaze:int,speech:int,target:str):
         self.wait = wait
@@ -39,12 +41,33 @@ class RobotDecision(Decision):
     
     def decision_tuple_string(self):
         return (
+            str(int(self.wait)),
+            str(self.gesture),
+            str(self.gaze),
+            str(self.speech),
+            self.target
+        )
+
+        return (
             str(self.wait),
             self.gesture_names[self.gesture],
             self.gaze_names[self.gaze],
             self.speech_names[self.speech],
             self.target
             )
+    
+    def decision_string(self):
+        return "{}_{}_{}_{}_{}".format(*self.decision_tuple_string())
+    
+    @staticmethod
+    def update_state_decision(states,decision):
+        states["DECISION"]["Wait"].append(decision.wait)
+        states["DECISION"]["Gesture"].append(decision.gesture)
+        states["DECISION"]["Gaze"].append(decision.gaze)
+        states["DECISION"]["Speech"].append(decision.speech)
+        states["DECISION"]["Target"].append(decision.target)
+
+        return states
     
     @staticmethod
     def create_publisher(topic="/hri_engage/decisions",queue_size=1):

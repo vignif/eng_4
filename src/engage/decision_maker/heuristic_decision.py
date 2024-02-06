@@ -6,6 +6,8 @@ from engage.decision_maker.decision_maker import Decision
 class HeuristicDecision(Decision):
     action_names = ["NOTHING","WAIT","MAINTAIN","RECAPTURE","ELICIT_TARGET","ELICIT_GENERAL"]
 
+    component_names = ["Action","Target"]
+
     def __init__(self,action:int,target:str):
         self.action = action
         self.target = target
@@ -25,6 +27,16 @@ class HeuristicDecision(Decision):
     
     def decision_tuple_string(self):
         return (self.action_names[self.action],self.target)
+    
+    def decision_string(self):
+        return "{}_{}".format(*self.decision_tuple_string())
+    
+    @staticmethod
+    def update_state_decision(states,decision):
+        states["DECISION"]["Action"].append(decision.action)
+        states["DECISION"]["Target"].append(decision.target)
+
+        return states
     
     @staticmethod
     def create_publisher(topic="/hri_engage/decisions",queue_size=1):
