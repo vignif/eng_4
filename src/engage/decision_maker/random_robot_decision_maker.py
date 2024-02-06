@@ -52,7 +52,6 @@ class RandomRobotDecisionMaker(DecisionMaker):
 
 
     def decide(self,state:EngageState):
-        print(self.wait_time.to_sec())
         if state.waiting:
             return RobotDecision(
                 True,

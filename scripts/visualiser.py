@@ -12,6 +12,8 @@ from engage.bagreader import Bagreader
 from engage.decision_maker.heuristic_decision import HeuristicDecision
 from engage.explanation.hri_explainer import HRIBodyExplainer
 from engage.decision_maker.heuristic_decision_maker import HeuristicDecisionMaker
+from engage.decision_maker.random_robot_decision_maker import RandomRobotDecisionMaker
+from engage.decision_maker.robot_decision import RobotDecision
 
 
 class Visualiser:
@@ -93,6 +95,8 @@ class Visualiser:
         self.create_explanation_windows()
         if self.bagreader.decision_type == "heuristic":
             self.decision_maker = HeuristicDecisionMaker()
+        elif self.bagreader.decision_type == "random_robot":
+            self.decision_maker = RandomRobotDecisionMaker()
         self.explainer = HRIBodyExplainer(self.decision_maker)
 
         
