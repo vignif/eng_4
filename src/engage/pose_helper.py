@@ -3,6 +3,7 @@ import numpy as np
 import math
 from tsmoothie.smoother import LowessSmoother
 import tf
+import tf2_ros
 
 from opendr.engine.target import Pose 
 
@@ -14,7 +15,7 @@ from hri_msgs.msg import Skeleton2D, NormalizedPointOfInterest2D, IdsList
 from sensor_msgs.msg import JointState
 from image_geometry import PinholeCameraModel
 from visualization_msgs.msg import Marker 
-from geometry_msgs.msg import Vector3Stamped,TwistStamped
+from geometry_msgs.msg import Vector3Stamped,TwistStamped,TransformStamped
 from geometry_msgs.msg import Pose as GPose
 
 class HRIPoseBody:
@@ -89,6 +90,10 @@ class HRIPoseBody:
         self.position_times = []
         self.num_positions = 0
 
+        # Transforms
+        self.face_trans = [0,0,0]
+        self.face_rot = [0,0,0,0]
+
         # Publishers
         this_body_topic = "/humans/bodies/{}/".format(self.id)
         self.pose_pub = rospy.Publisher(this_body_topic+"poses",PoseArrayUncertain,queue_size=1)
@@ -127,6 +132,9 @@ class HRIPoseBody:
 
         # Calculate velocity
         self.update_velocity()
+
+        # Set face transform
+        self.update_face_transform()
 
         
     '''
@@ -178,6 +186,26 @@ class HRIPoseBody:
                 self.pose_history[i] = self.pose_history[i][-self.window:]
         if overflow:
             self.num_poses = self.window
+
+    def update_face_transform(self):
+        # Try get the nose point
+        point = self.pose_3D[self.joints["nose"]]
+        if point is None:
+            point = self.pose_3D[self.joints["neck"]]
+            if point is None:
+                # Can't find either the nose or the neck, don't update the transform
+                return None
+            
+        # Correct for ARI's weirdness
+        trans = [point[0],point[1],point[2]]
+        if self.camera_frame == "sellion_link" and self.world_frame == "base_link":
+            trans[0] = abs(trans[0])
+            trans[1] = -trans[1]
+        
+        
+        # Update transformation
+        self.face_trans = trans
+
 
     '''
     Orientations
@@ -484,6 +512,9 @@ class HRIPoseManager:
         rot = [0,0,0]
         self.update_camera_transform(trans,rot)
 
+        # Transforms
+        self.face_tf_br = tf.TransformBroadcaster()
+
     def update_camera_model(self,rgb_info,depth_info):
         self.depth_model = PinholeCameraModel()
         self.rgb_model = PinholeCameraModel()
@@ -497,6 +528,23 @@ class HRIPoseManager:
             tf.transformations.quaternion_matrix(rot)
         )
         self.inversed_transform = tf.transformations.inverse_matrix(transform)
+
+    def broadcast_transforms(self):
+        for body in self.bodies:
+            t = TransformStamped()
+
+            t.header.stamp = rospy.Time.now()
+            t.header.frame_id = self.world_frame
+            t.child_frame_id = "{}_face_tf".format(body)
+            t.transform.translation.x = self.bodies[body].face_trans[0]
+            t.transform.translation.y = self.bodies[body].face_trans[1]
+            t.transform.translation.z = self.bodies[body].face_trans[2]
+            # TODO: Rotation, if this ever becomes important
+            t.transform.rotation.x = 0
+            t.transform.rotation.y = 0
+            t.transform.rotation.z = 0
+            t.transform.rotation.w = 1
+            self.face_tf_br.sendTransformMessage(t)
 
     def publish_bodies(self,time):
         tracked = IdsList()
@@ -549,4 +597,7 @@ class HRIPoseManager:
         # Now publish the bodies
         for body in self.bodies:
             self.bodies[body].publish()
+
+        # Now publish the transforms
+        self.broadcast_transforms()
 

@@ -25,6 +25,7 @@ rosnode kill /hri_visualization
 rosnode kill /head_front_camera/realsense2_camera
 rosservice call /attention_manager/set_policy "policy: 0
 frame: ''"
+rosservice call /gaze_manager/reset_gaze
 roslaunch realsense2_camera rs_camera.launch align_depth:=true depth_width:=640 depth_height:=480 depth_fps:=30 color_width:=640 color_height:=480 color_fps:=30
 
 

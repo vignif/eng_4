@@ -101,9 +101,6 @@ class PoseEstimationNode:
         # OpenCV Bridge
         self.cv_bridge = CvBridge()
 
-        # Transforms
-        self.cam_br = tf.TransformBroadcaster()
-
     def camera_callback(self,rgb_img,rgb_info,depth_img,depth_info):
         # Update time for synching
         self.im_time = rgb_info.header.stamp

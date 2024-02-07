@@ -1,5 +1,6 @@
 import rospy
 import numpy as np
+import tf
 
 from play_motion_msgs.msg import PlayMotionActionGoal
 from pal_interaction_msgs.msg import TtsActionGoal
