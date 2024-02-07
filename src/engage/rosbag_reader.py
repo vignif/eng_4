@@ -37,7 +37,7 @@ class RosbagReader:
         self.decisions,self.decision_times,self.decision_msgs = self.read_decisions()
 
         # State
-        self.states,self.state_times,self.state_bodies = self.read_decision_states()
+        self.states,self.state_times,self.state_bodies,self.decision_maker_name = self.read_decision_states()
 
         # Grapher
         self.grapher = self.get_grapher()
@@ -158,9 +158,9 @@ class RosbagReader:
         states,state_bodies,state_times = decision_state.create_state_dicts(decision)
         
         for _,msg,_ in self.log_bag.read_messages(topics=[topic]):
-            states,state_bodies,state_times = decision_state.update_state_dicts_from_msg(states,state_bodies,state_times,msg,decision)
+            states,state_bodies,state_times,decision_maker_name = decision_state.update_state_dicts_from_msg(states,state_bodies,state_times,msg,decision)
 
-        return states,state_times,state_bodies
+        return states,state_times,state_bodies,decision_maker_name
     
     '''
     PLOT

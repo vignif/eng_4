@@ -100,6 +100,7 @@ class DecisionNode:
         self.lock = False
 
         # Decision-Maker
+        self.dm_name = decision_maker
         self.dm = self.decision_makers[decision_maker](
             wait_time=wait_time,
             wait_deviation=wait_deviation,
@@ -195,7 +196,7 @@ class DecisionNode:
         self.decision_publisher.publish(decision.message(time=self.body_time))
 
         # Publish state
-        self.decision_state_publisher.publish(self.state.message(decision,self.decision_state_msg))
+        self.decision_state_publisher.publish(self.state.message(decision,self.decision_state_msg,self.dm_name))
 
         # Control robot
         if self.robot_command:

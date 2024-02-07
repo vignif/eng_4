@@ -59,7 +59,7 @@ class SimpleARIController(RobotController):
             # Gesture
             motion = None
             if decision.gesture == RobotDecisionMSG.GESTURE_WAVE:
-                motion = "wave"
+                motion = np.random.choice(["wave","wave_left"])
             elif decision.gesture == RobotDecisionMSG.GESTURE_ALIVE:
                 motion = "alive_6"
             
@@ -89,7 +89,7 @@ class SimpleARIController(RobotController):
 
                     
                     gaze.point = target_pos.position
-                    if self.world_frame == "base_link" and self.camera_frame == "sellion_link":
+                    if self.world_frame == "base_link":
                     # The following changes are necessary for some reason to properly convert to the base_link for the ARI robot
                         target_pos.position.x = abs(target_pos.position.x)
                         target_pos.position.y = -target_pos.position.y
