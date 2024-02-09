@@ -131,3 +131,9 @@ If decisions are executed using one of the controller scripts written for the Pa
 - /play_motion/goal, play_motion_msgs/PlayMotionActionGoal - the motion instructions for the robot
 - /look_at, geometry_msgs/PointStamped - the gaze target for the robot
 - /tts/goal, pal_interaction_msgs/TtsActionGoal - the text-to-speech instructions for the robot
+
+## Visualisation
+
+**This feature is still under construction and prone to breaking**
+
+`rosrun engage viewer.py`
