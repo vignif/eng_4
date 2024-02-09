@@ -14,6 +14,7 @@ from engage.decision_maker.heuristic_ari_controller import HeuristicARIControlle
 from engage.decision_maker.simple_ari_controller import SimpleARIController
 from engage.decision_maker.simple_target_ari_controller import SimpleTargetARIController
 from engage.decision_maker.engage_state import EngageState
+from engage.decision_maker.decision_manager import DecisionManager
 
 class DecisionBody:
     def __init__(self,id):
@@ -70,24 +71,6 @@ class DecisionBody:
         self.velocity = vel_msg.twist
 
 class DecisionNode:
-    decision_makers = {
-        "heuristic":HeuristicDecisionMaker,
-        "random_robot":RandomRobotDecisionMaker,
-        "simple_target":SimpleTargetDecisionMaker,
-    }
-
-    decision_state_msgs = {
-        "heuristic":HeuristicStateDecision,
-        "random_robot":RobotStateDecision,
-        "simple_target":HeuristicStateDecision,
-    }
-
-    robot_controllers = {
-        "heuristic_ari_controller":HeuristicARIController,
-        "simple_ari_controller":SimpleARIController,
-        "simple_target_ari_controller":SimpleTargetARIController,
-    }
-
     def __init__(
             self,
             decision_maker="heuristic",
@@ -106,7 +89,7 @@ class DecisionNode:
 
         # Decision-Maker
         self.dm_name = decision_maker
-        self.dm = self.decision_makers[decision_maker](
+        self.dm = DecisionManager.decision_makers[decision_maker](
             wait_time=wait_time,
             wait_deviation=wait_deviation,
             reduced_action_space = reduced_action_space,
@@ -115,7 +98,7 @@ class DecisionNode:
         # Robot Controller
         self.robot_command = robot_command
         if robot_command:
-            self.robot_controller = self.robot_controllers[robot_controller](world_frame=world_frame,**kwargs)
+            self.robot_controller = DecisionManager.robot_controllers[robot_controller](world_frame=world_frame,**kwargs)
 
         # Subscribers
         self.body_subscriber = rospy.Subscriber("/humans/bodies/tracked",IdsList,self.manage_bodies)
@@ -123,7 +106,7 @@ class DecisionNode:
         self.group_subscriber = rospy.Subscriber("/humans/interactions/groups",Group,self.update_groups)
 
         # Publishers
-        self.decision_state_msg = self.decision_state_msgs[decision_maker]
+        self.decision_state_msg = DecisionManager.decision_state_msgs[decision_maker]
         self.decision_publisher = self.dm.decision.create_publisher(topic="/hri_engage/decisions",queue_size=1)
         self.decision_state_publisher = EngageState.create_publisher(self.decision_state_msg,topic="hri_engage/decision_states",queue_size=1)
 

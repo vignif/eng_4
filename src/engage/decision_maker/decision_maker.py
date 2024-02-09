@@ -19,6 +19,10 @@ class Decision:
     @staticmethod
     def create_publisher(self,topic,queue_size):
         raise NotImplementedError
+    
+    @staticmethod
+    def interesting_decision(decision_message):
+        raise NotImplementedError
 
 class DecisionState:
     def __init__(self) -> None:

@@ -47,14 +47,6 @@ class RobotDecision(Decision):
             str(self.speech),
             self.target
         )
-
-        return (
-            str(self.wait),
-            self.gesture_names[self.gesture],
-            self.gaze_names[self.gaze],
-            self.speech_names[self.speech],
-            self.target
-            )
     
     def decision_string(self):
         return "{}_{}_{}_{}_{}".format(*self.decision_tuple_string())
@@ -72,6 +64,10 @@ class RobotDecision(Decision):
     @staticmethod
     def create_publisher(topic="/hri_engage/decisions",queue_size=1):
         return rospy.Publisher(topic,RobotDecisionMSG,queue_size=queue_size)
+    
+    @staticmethod
+    def interesting_decision(decision_message):       
+        return not decision_message.wait
 
 
 

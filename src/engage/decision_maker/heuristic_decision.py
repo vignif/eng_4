@@ -41,6 +41,13 @@ class HeuristicDecision(Decision):
     @staticmethod
     def create_publisher(topic="/hri_engage/decisions",queue_size=1):
         return rospy.Publisher(topic,HeuristicDecisionMSG,queue_size=queue_size)
+    
+    @staticmethod
+    def interesting_decision(decision_message):
+        uninteresting = [HeuristicDecisionMSG.NOTHING,HeuristicDecisionMSG.WAIT]
+        if decision_message.action in uninteresting:
+            return False
+        return True
 
 
 

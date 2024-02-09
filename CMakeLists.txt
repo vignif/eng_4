@@ -185,6 +185,11 @@ catkin_install_python(PROGRAMS
 )
 
 catkin_install_python(PROGRAMS
+  scripts/live_explainer.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+catkin_install_python(PROGRAMS
   scripts/pose.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
