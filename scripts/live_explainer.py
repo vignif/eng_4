@@ -4,6 +4,8 @@ import argparse
 from sensor_msgs.msg import Image
 
 from engage.decision_maker.decision_manager import DecisionManager
+from engage.explanation.hri_explainer import HRIExplainer
+from engage.decision_maker.engage_state import EngageState
 
 class LiveExplainer:
     def __init__(self,
@@ -15,7 +17,12 @@ class LiveExplainer:
         self.decision_maker = decision_maker
         self.buffer_length = rate*buffer_time
 
-        self.dm = DecisionManager.decision_makers[decision_maker]
+        # Decision-Maker
+        # TODO: The parameters of the decision maker should match the real ones ... how?
+        self.dm = DecisionManager.decision_makers[decision_maker]()
+
+        # Explainer
+        self.explainer = HRIExplainer(self.dm)
 
         # Subscribers
         rgb_img_sub = rospy.Subscriber(rgb_image_topic,Image,callback=self.update_image_buffer)
@@ -41,7 +48,7 @@ class LiveExplainer:
         dec_time = dec.header.stamp
 
         if self.dm.decision.interesting_decision(dec.decision):
-            # Only handle decisions that are interesting, not NOTHING or WAITING
+            # Only handle decisions that are interesting, not e.g. NOTHING or WAITING
             try:
                 dec_index = self.image_times.index(dec_time)
             except ValueError:
@@ -49,6 +56,13 @@ class LiveExplainer:
                 return None
             
             dec_img = self.image_buffer[dec_index]
+
+            # Set up explainer
+            self.explainer.setup_explanation(dec,query=None,decision_maker=self.decision_maker)
+
+            # Explain
+            self.explainer.explain()
+
 
     def run(self):
         while not rospy.is_shutdown():

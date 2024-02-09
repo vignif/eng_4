@@ -1,6 +1,5 @@
 import networkx as nx
 from engage.msg import EngagementLevel
-from engage.decision_helper import DecisionState
 
 class SimpleCausalModel:
     def __init__(self,bodies,cardinalities) -> None:

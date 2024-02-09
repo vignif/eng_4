@@ -1,6 +1,11 @@
 import itertools
+import copy
 
 from engage.explanation.explanation_helper import CounterfactualTree
+
+class Query:
+    def __init__(self):
+        pass
 
 class Outcome:
     def __init__(self):
@@ -33,7 +38,10 @@ class Observation:
 
 class Counterfactual:
     def __init__(self,decision_maker,intervention_order=[],interventions=[],changes={}):
-        pass
+        self.decision_maker = decision_maker
+        self.intervention_order = intervention_order
+        self.interventions = interventions
+        self.changes = changes
 
     def copy(self):
         raise NotImplementedError
@@ -43,6 +51,66 @@ class Counterfactual:
         Return the decision maker's outcome for this counterfactual
         '''
         raise NotImplementedError
+    
+    def full_state(self,observation,changes):
+        state = copy.deepcopy(observation.state)
+        for key in changes:
+            for variable in changes[key]:
+                state[key][variable] = changes[key][variable]
+
+        return state
+    
+    def apply_interventions(self,observation,intervention_order,interventions,causal=True):
+        changes = {}
+        if causal:
+            causal_graph = copy.deepcopy(observation.causal_graph)
+            
+            for intrv in intervention_order:
+                if intrv in causal_graph.graph.nodes:
+                    # In the order of interventions, remove the edges from parents of intervened node
+                    parents = list(causal_graph.graph.predecessors(intrv))
+                    for par in parents:
+                        causal_graph.graph.remove_edge(par,intrv)
+                    # Apply causal effects
+                    changes = self.apply_change(changes,interventions,observation,intrv)
+                    changes = self.apply_causal_effects(causal_graph,changes,observation,intrv)
+                else:
+                    # Just apply regularly
+                    changes = self.apply_change(changes,interventions,observation,intrv)
+        else:
+            for intrv in intervention_order:
+                changes = self.apply_change(changes,interventions,observation,intrv)
+        return changes
+    
+    def apply_causal_effects(self,causal_graph,changes,observation,intrv):
+        children = causal_graph.graph.successors(intrv)
+        for child in children:
+            changes = causal_graph.get_causal_effect(intrv,child,observation.state,changes)
+        # Recursively apply down the graph
+        children = causal_graph.graph.successors(intrv)
+        for child in children:
+            changes = self.apply_causal_effects(causal_graph,changes,observation,child)
+
+        return changes
+
+    def apply_change(self,changes,interventions,observation,var):
+
+        intrv_list = var.split("_")
+        if intrv_list[0] not in changes:
+                changes[intrv_list[0]] = {}
+        changes[intrv_list[0]][intrv_list[1]] = interventions[intrv_list[0]][intrv_list[1]]
+
+        return changes
+    
+    def in_interventions(self,influence_var):
+        if influence_var in self.interventions:
+            return True
+        
+        vlist = influence_var.split("_")
+        if len(vlist)==2 and vlist[0] in self.interventions and vlist[1] in self.interventions[vlist[0]]:
+            return True
+        
+        return False
     
 class Explanation:
     def __init__(self,counterfactual,critical_influence=None):

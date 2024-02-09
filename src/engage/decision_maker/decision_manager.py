@@ -4,6 +4,8 @@ from engage.decision_maker.simple_target_decision_maker import SimpleTargetDecis
 from engage.decision_maker.heuristic_ari_controller import HeuristicARIController
 from engage.decision_maker.simple_ari_controller import SimpleARIController
 from engage.decision_maker.simple_target_ari_controller import SimpleTargetARIController
+from engage.explanation.heuristic_explainer import HeuristicOutcome,HeuristicQuery
+
 from engage.msg import HeuristicStateDecision,RobotStateDecision
 
 
@@ -24,6 +26,16 @@ class DecisionManager:
         "heuristic_ari_controller":HeuristicARIController,
         "simple_ari_controller":SimpleARIController,
         "simple_target_ari_controller":SimpleTargetARIController,
+    }
+
+    decision_outcomes = {
+        "heuristic":HeuristicOutcome,
+        "simple_target":HeuristicOutcome,
+    }
+
+    decision_queries = {
+        "heuristic":HeuristicQuery,
+        "simple_target":HeuristicQuery,
     }
 
     def __init__(self) -> None:

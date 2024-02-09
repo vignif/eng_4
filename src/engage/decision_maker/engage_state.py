@@ -1,4 +1,5 @@
 import rospy
+import copy
 
 from engage.decision_maker.decision_maker import DecisionState,Decision
 from engage.msg import DecisionState as DecisionStateMSG
@@ -200,5 +201,51 @@ class EngageState(DecisionState):
         return states,state_bodies,state_times,msg.decision_maker
     
     @staticmethod
+    def single_state_from_msg(msg):
+        state = {}
+        state_bodies = msg.state.bodies
+
+        state["GENERAL"] = {}
+        state["ROBOT"] = {}
+
+        for i in range(len(msg.state.bodies)):
+            body = state_bodies[i]
+            state[body] = {}
+            state[body]["Distance"] = msg.state.distances[i]
+            state[body]["Mutual Gaze"] = msg.state.mutual_gazes[i]
+            state[body]["Engagement Value"] = msg.state.engagement_values[i]
+            state[body]["Pose Estimation Confidence"] = msg.state.pose_estimation_confidences[i]
+            state[body]["Engagement Level"] = msg.state.engagement_levels[i]
+            state[body]["Engagement Level Confidence"] = msg.state.engagement_level_confidences[i]
+            state[body]["Motion"] = msg.state.motion_activities[i]
+            state[body]["Motion Confidence"] = msg.state.motion_activity_confidences[i]
+            state[body]["Group"] = msg.state.groups[i]
+            state[body]["Group Confidence"] = msg.state.group_confidences[i]
+            state[body]["Group with Robot"] = msg.state.group_with_robot[i]
+
+        state["GENERAL"]["Waiting"] = msg.state.waiting
+        
+        state["ROBOT"]["Group"] = msg.state.robot_group
+        state["ROBOT"]["Group Confidence"] = msg.state.robot_group_confidence
+
+        return state,state_bodies
+
+
+    
+    @staticmethod
     def create_publisher(msg,topic="hri_engage/decision_states",queue_size=1):
         return rospy.Publisher(topic,msg,queue_size=queue_size)
+    
+    @staticmethod
+    def discretise(state,bodies):
+        discrete_state = copy.deepcopy(state)
+
+        discrete_state["ROBOT"]["Group Confidence"] = DecisionState.float_bucket(discrete_state["ROBOT"]["Group Confidence"])
+
+        body_floats = ["Mutual Gaze","Engagement Value","Pose Estimation Confidence","Engagement Level Confidence","Motion Confidence","Group Confidence"]
+
+        for body in bodies:
+            discrete_state[body]["Distance"] = DecisionState.distance_bucket(discrete_state[body]["Distance"])
+            for bf in body_floats:
+                discrete_state[body][bf] = DecisionState.float_bucket(discrete_state[body][bf])
+        return discrete_state
