@@ -113,30 +113,34 @@ class Counterfactual:
         return False
     
 class Explanation:
-    def __init__(self,counterfactual,critical_influence=None):
-        self.counterfactual = counterfactual
-        self.critical_influence = critical_influence
+    def __init__(self):
+        self.num_vars = 0
+
+    def make_critical_explanation(self,variable,values,outcome):
+        raise NotImplementedError
     
 class CounterfactualExplainer:
-    def __init__(self,true_observation,true_outcome,counterfactual,decision_maker):
+    def __init__(self,true_observation,true_outcome,counterfactual,decision_maker,explanation):
         self.true_observation = true_observation
         self.true_outcome = true_outcome
         self.CF = counterfactual
         self.decision_maker = decision_maker
+        self.Explanation = explanation
 
     def explain(self,why_not,max_depth):
         influences = self.true_observation.get_influences()
-        print("{} influences".format(len(influences)))
+        #print("{} influences".format(len(influences)))
 
-        critical_influences,critical_thresholds,critical_values = self.explain_case(influences,why_not,max_depth=max_depth)
-        return critical_influences,critical_thresholds,critical_values
+        explanations = self.explain_case(influences,why_not,max_depth=max_depth)
+        return explanations
 
     def explain_case(self,influences,why_not,counterfactual=None,max_depth=2):
         if counterfactual is None:
             counterfactual = self.CF(self.decision_maker)
-        critical_influences,critical_thresholds,critical_values = self.find_critical_influences(influences,why_not,counterfactual)
+        critical_influences,critical_thresholds,critical_values,outcomes = self.find_critical_influences(influences,why_not,counterfactual)
+        explanations = self.assemble_critical_explanations(critical_influences,critical_values,outcomes,why_not)
 
-        if len(critical_influences)==0:
+        if explanations == []:
             # Need to find a partial explanation
             # TODO: proper loop here, maybe rename as not really potential, get the function to return something useful
             print("No critical influences found, will try deeper searches...")
@@ -145,10 +149,20 @@ class CounterfactualExplainer:
                 potential_influences = self.find_potential_influences(influences,why_not,counterfactual,depth=i)
                 for exp in potential_influences:
                     print(exp)
-            
-        # TODO: Return an object for explanations
         else:
-            return critical_influences,critical_thresholds,critical_values
+            return explanations
+        
+    '''
+    EXPLANATIONS
+    '''
+    def assemble_critical_explanations(self,critical_influences,critical_values,outcomes,query):
+        explanations = []
+        for i in range(len(critical_influences)):
+            exp = self.Explanation(self.true_outcome,self.true_observation,query)
+            exp.make_critical_explanation(critical_influences[i],critical_values[i],outcomes[i])
+            explanations.append(exp)
+
+        return explanations
     
     '''
     
@@ -159,6 +173,7 @@ class CounterfactualExplainer:
         critical_influences=[]
         thresholds = []
         critical_values = []
+        counterfactual_outcomes = []
 
         for var in influences:
             if var in counterfactual.changes:
@@ -175,9 +190,12 @@ class CounterfactualExplainer:
                 vartype = self.true_observation.get_influence_type(var)
 
                 if vartype == "Categorical":
+                    var_outcomes = []
                     for ci in critical_interventions:
                         outcome = counterfactual.outcome(self.true_observation,counterfactual.intervention_order+[var],ci)
+                        
                         valid_outcome = self.true_outcome.valid_outcome(outcome,why_not)
+                        var_outcomes.append(outcome)
 
                         if not valid_outcome:
                             all_valid = False
@@ -189,13 +207,15 @@ class CounterfactualExplainer:
                         critical_influences.append(var)
                         thresholds.append(None)
                         critical_values.append([self.true_observation.value_of_variable_in_assignment(var,ci)])
+                        counterfactual_outcomes.append(var_outcomes)
                 elif vartype == "Continuous":
                     outcomes = []
                     values = []
+                    var_outcomes = []
                     for ci in critical_interventions:
                         outcome = counterfactual.outcome(self.true_observation,counterfactual.intervention_order+[var],ci)
                         valid_outcome = self.true_outcome.valid_outcome(outcome,why_not)
-
+                        var_outcomes.append(outcome)
                         outcomes.append(valid_outcome)
                         values.append(self.true_observation.value_of_variable_in_assignment(var,ci))
                     cia,cib = Observation.calculate_threshold_index(outcomes)
@@ -203,8 +223,9 @@ class CounterfactualExplainer:
                         critical_influences.append(var)
                         thresholds.append((cia,cib))
                         critical_values.append([values[i] for i in range(cia,cib)])
+                        counterfactual_outcomes.append([var_outcomes[i] for i in range(cia,cib)])
 
-        return critical_influences,thresholds,critical_values
+        return critical_influences,thresholds,critical_values,counterfactual_outcomes
     
     '''
     

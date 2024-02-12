@@ -6,7 +6,7 @@ from engage.decision_maker.decision_manager import DecisionManager
 from engage.msg import HeuristicDecision as HeuristicDecisionMSG
 from engage.decision_maker.heuristic_decision import HeuristicDecision
 from engage.explanation.counterfactual_explainer import CounterfactualExplainer
-from engage.explanation.heuristic_explainer import HeuristicCounterfactual
+from engage.explanation.heuristic_explainer import HeuristicCounterfactual,HeuristicExplanation
 
 class HRIExplainer:
     def __init__(self,decision_maker):
@@ -50,6 +50,9 @@ class HRIExplainer:
             print("===Query===")
             print(self.query)
 
-        cfx = CounterfactualExplainer(self.true_observation,self.true_outcome,HeuristicCounterfactual,self.decision_maker)
+        cfx = CounterfactualExplainer(self.true_observation,self.true_outcome,HeuristicCounterfactual,self.decision_maker,HeuristicExplanation)
         explanations = cfx.explain(self.query,max_depth)
-        print(explanations)
+        print("===Possible Explanations===")
+        for exp,i in zip(explanations,range(len(explanations))):
+            print("{}: {}".format(i,exp.present_explanation()))
+            exp.follow_up_question()
