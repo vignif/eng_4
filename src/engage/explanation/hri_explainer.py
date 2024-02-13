@@ -55,4 +55,4 @@ class HRIExplainer:
         print("===Possible Explanations===")
         for exp,i in zip(explanations,range(len(explanations))):
             print("{}: {}".format(i,exp.present_explanation()))
-            exp.follow_up_question()
+            questions,right_answers,distractors = exp.follow_up_question()

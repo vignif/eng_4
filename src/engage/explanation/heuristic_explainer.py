@@ -88,12 +88,17 @@ class HeuristicExplanation(Explanation):
         1.00:"very sure",
     }
 
-    def __init__(self,true_outcome:HeuristicOutcome,true_observation:EngageStateObservation,query:HeuristicQuery,counterfactual:HeuristicCounterfactual):
+    def __init__(self,true_outcome:HeuristicOutcome,true_observation:EngageStateObservation,query:HeuristicQuery,counterfactual:HeuristicCounterfactual,mode="body"):
         self.true_observation = true_observation
         self.true_outcome = true_outcome
         self.query = query
         self.counterfactual = counterfactual
+        self.bodies = self.get_bodies()
+        self.mode = mode
         super().__init__()
+
+    def get_bodies(self):
+        return [key for key in list(self.true_observation.state.keys()) if key not in ["GENERAL","ROBOT"]]
 
     def make_critical_explanation(self,variable,values,outcomes):
         self.num_vars = 1
@@ -228,7 +233,7 @@ class HeuristicExplanation(Explanation):
                         elif approx_thresh == 0.67:
                             return "{} and I were not looking at each other".format(subject)
                         elif approx_thresh == 1.00:
-                            return "{} and I were not looking directly at each".format(subject)
+                            return "{} and I were not looking directly at each other".format(subject)
                     else:
                         # True value is higher than a threshold
                         if approx_thresh == 0.67:
@@ -450,6 +455,9 @@ class HeuristicExplanation(Explanation):
                             val_settings.append("{} was not looking at me".format(subject))
                         elif approx_max == 0.67:
                             val_settings.append("{} and I were not directly looking at each other".format(subject))
+                        elif approx_max == 1.00:
+                            # Somewhere in between
+                            val_settings.append("{} and I were either looking directly at each other or directly away from eachother".format(subject))
 
                     elif max_val:
                         # Only conerns the lowest value
@@ -459,6 +467,9 @@ class HeuristicExplanation(Explanation):
                             val_settings.append("{} was looking at me".format(subject))
                         elif approx_min == 0.33:
                             val_settings.append("{} was not looking directly away from me".format(subject))
+                        elif approx_min == 0.00:
+                            # Somewhere in between
+                            val_settings.append("{} and I were either looking directly at each other or directly away from eachother".format(subject))
                     else:
                         if approx_min == 0.33 and approx_max == 0.67:
                             # This is the only valid combination unless another discretisation is introduced
@@ -484,6 +495,9 @@ class HeuristicExplanation(Explanation):
                             val_settings.append("{} was not so engaged with me".format(subject))
                         elif approx_max == 0.67:
                             val_settings.append("{} was not very engaged with me".format(subject))
+                        elif approx_max == 1.00:
+                            # Somewhere in between
+                            val_settings.append("{} was either very engaged with me or not very engaged with me".format(subject))
 
                     elif max_val:
                         # Only conerns the lowest value
@@ -548,6 +562,9 @@ class HeuristicExplanation(Explanation):
                 situation = "I was reasonably sure"
             elif approx_min == 0.33:
                 situation = "I was at least a little bit sure"
+            else:
+                # Somewhere in between
+                situation = "I was either very sure or very unsure"
         else:
             # Concerns both
             if len(values) == 1:
@@ -568,11 +585,6 @@ class HeuristicExplanation(Explanation):
             var_string = "whether or not {} was interested in me".format(subject)
         elif var_name == "Pose Estimation Confidence":
             var_string = "my detection of {}'s skeleton".format(subject)
-        try:
-            x = situation
-        except:
-            error_message = "var: {}, values = {}".format(var,values)
-            raise Exception(error_message)
 
         return "{} about {}".format(situation,var_string)
 
@@ -604,7 +616,7 @@ class HeuristicExplanation(Explanation):
     FOLLOW UP
     '''
     
-    def follow_up_question(self,mode="body"):
+    def follow_up_question(self):
         '''
         modes:
             body - generate follow-ups using other bodies with the same variable
@@ -612,51 +624,55 @@ class HeuristicExplanation(Explanation):
         if len(self.variables) == 1:
             follow_up_vars = []
             follow_up_questions = []
-            if mode=="body":
+            if self.mode=="body":
                 if self.var_cats[self.variables[0]] not in ["ROBOT","GENERAL"]:
                     for var_cat in self.true_observation.state:
-                        if var_cat == self.var_cats[self.variables[0]] or var_cat in ["ROBOT","GENERAL"]:
+                        if var_cat in ["ROBOT","GENERAL"]:
                             continue
                         if self.var_names[self.variables[0]] in self.true_observation.state[var_cat]:
                             follow_up_vars.append((var_cat,self.var_names[self.variables[0]]))
                     
                 for var in follow_up_vars:
+                    var_name = "{}_{}".format(var[0],var[1])
                     for val in self.true_observation.variable_cardinalities[var[1]]:
                         if val == self.true_observation.state[var[0]][var[1]]:
+                            continue
+                        if var_name == self.variables[0]:
+                            # Don't use the same body as the counterfactual
                             continue
                         num_val = val
                         if self.true_observation.variable_categories[var[1]] == "Continuous" and var[1]!="Distance":
                             num_val = val/max(self.true_observation.variable_cardinalities[var[1]])
                         follow_up_questions.append((var,num_val))
             
-            # Display followups
-            questions = []
-            right_answer = []
-            for fuq in follow_up_questions:
-                # Get follow up question
-                fuq_text = self.question_text(fuq[0][0],fuq[0][1],fuq[1])
-                questions.append(fuq_text)
-                print("\t - {}".format(fuq_text))
-                # Get right answer
-                intervention = {fuq[0][0]:{fuq[0][1]:fuq[1]}}
-                var_full_name = "{}_{}".format(fuq[0][0],fuq[0][1])
-                if fuq[0][1] != "Distance" and fuq[0][0] != "ROBOT":
-                    if self.true_observation.state[fuq[0][0]]["Distance"] == 0.1:
-                        val = 0.5
-                    else:
-                        val = 0.1
-                    intervention[fuq[0][0]]["Distance"] = val
-                    var_full_name2 = "{}_Distance".format(fuq[0][0])
-                    print("INT",intervention)
-                    right_decision = self.counterfactual.outcome(self.true_observation,self.counterfactual.intervention_order+[var_full_name,var_full_name2],intervention)
+                # Display followups
+                questions = []
+                right_answers = []
+                distractors = []
+                for fuq in follow_up_questions:
+                    # Get follow up question
+                    fuq_text = self.question_text(fuq[0][0],fuq[0][1],fuq[1])
+                    fuq_text = "What do you think I would do if {}?".format(fuq_text)
+                    questions.append(fuq_text)
+                    print("\t - {}".format(fuq_text))
+                    # Get right answer
+                    val = fuq[1]
+                    if self.true_observation.variable_categories[fuq[0][1]] == "Continuous" and fuq[0][1] != "Distance":
+                        val = val*max(self.true_observation.variable_cardinalities[fuq[0][1]])
+                    intervention = {fuq[0][0]:{fuq[0][1]:val}}
+                    var_full_name = "{}_{}".format(fuq[0][0],fuq[0][1])
+                    right_decision = self.counterfactual.outcome(self.true_observation,self.counterfactual.intervention_order+[var_full_name],intervention)
                     print("\t\t - {}".format(right_decision))
-                    intervention[fuq[0][0]]["Distance"] = 7
-                    var_full_name2 = "{}_Distance".format(fuq[0][0])
-                    print("INT",intervention)
-                    right_decision = self.counterfactual.outcome(self.true_observation,self.counterfactual.intervention_order+[var_full_name,var_full_name2],intervention)
-                    print("\t\t - {}".format(right_decision))
+                    right_answers.append(right_decision)
+                    # Get Distractors
+                    distractors.append(self.get_distractors(right_decision))
+                    for distractor in distractors[-1]:
+                        #print("\t\t\t . {}".format(HeuristicOutcome(HeuristicDecision(distractor[0],distractor[1]))))
+                        pass
         else:
             raise NotImplementedError
+        
+        return questions,right_answers,distractors
         
     def question_text(self,var_cat,var_name,value):
         subject = self.person_name(var_cat)
@@ -729,7 +745,7 @@ class HeuristicExplanation(Explanation):
                 elif approx_val == 0.67:
                     question = "{} was looking mostly in my direction".format(subject)
                 elif approx_val == 1.00:
-                    question = "{} looking directly at me".format(subject)
+                    question = "{} was looking directly at me".format(subject)
             elif var_name == "Engagement Value":
                 approx_val = round(value,2)
                 if approx_val == 0.00:
@@ -744,4 +760,15 @@ class HeuristicExplanation(Explanation):
                 approx_val = round(value,2)
                 question = "{} was {}m away from me".format(subject,approx_val)
 
-        return "What would I do if {}?".format(question)
+        return question
+    
+    def get_distractors(self,right_decision:HeuristicDecision):
+        possible_actions = []
+        for i in HeuristicDecision.interesting_actions:
+            if HeuristicDecision.takes_target[i]:
+                for body in self.bodies:
+                    if not(i == right_decision.action and body == right_decision.target):
+                        possible_actions.append((i,body))
+            else:
+                possible_actions.append((i,None))
+        return possible_actions

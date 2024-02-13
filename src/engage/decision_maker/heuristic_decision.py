@@ -6,6 +6,18 @@ from engage.decision_maker.decision_maker import Decision
 class HeuristicDecision(Decision):
     action_names = ["NOTHING","WAIT","MAINTAIN","RECAPTURE","ELICIT_TARGET","ELICIT_GENERAL"]
 
+    uninteresting_actions = [HeuristicDecisionMSG.NOTHING,HeuristicDecisionMSG.WAIT]
+    interesting_actions = [HeuristicDecisionMSG.MAINTAIN,HeuristicDecisionMSG.RECAPTURE,HeuristicDecisionMSG.ELICIT_TARGET,HeuristicDecisionMSG.ELICIT_GENERAL]
+
+    takes_target = {
+        HeuristicDecisionMSG.NOTHING:False,
+        HeuristicDecisionMSG.WAIT:False,
+        HeuristicDecisionMSG.MAINTAIN:True,
+        HeuristicDecisionMSG.RECAPTURE:True,
+        HeuristicDecisionMSG.ELICIT_GENERAL:False,
+        HeuristicDecisionMSG.ELICIT_TARGET:True,
+    }
+
     component_names = ["Action","Target"]
 
     def __init__(self,action:int,target:str):
@@ -44,8 +56,7 @@ class HeuristicDecision(Decision):
     
     @staticmethod
     def interesting_decision(decision_message):
-        uninteresting = [HeuristicDecisionMSG.NOTHING,HeuristicDecisionMSG.WAIT]
-        if decision_message.action in uninteresting:
+        if decision_message.action in HeuristicDecision.uninteresting_actions:
             return False
         return True
 

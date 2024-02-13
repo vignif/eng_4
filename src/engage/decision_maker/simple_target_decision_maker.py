@@ -41,6 +41,6 @@ class SimpleTargetDecisionMaker(DecisionMaker):
                 action = action = HeuristicDecisionMSG.NOTHING
             else:
                 action = HeuristicDecisionMSG.ELICIT_TARGET
-                target = best_people[0]
+                target = sorted(best_people)[0]
 
         return HeuristicDecision(action,target)

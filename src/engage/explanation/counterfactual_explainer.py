@@ -213,7 +213,6 @@ class CounterfactualExplainer:
                     values = []
                     var_outcomes = []
                     for ci in critical_interventions:
-                        print(ci)
                         outcome = counterfactual.outcome(self.true_observation,counterfactual.intervention_order+[var],ci)
                         valid_outcome = self.true_outcome.valid_outcome(outcome,why_not)
                         var_outcomes.append(outcome)
