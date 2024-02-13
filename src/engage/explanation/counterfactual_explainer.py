@@ -138,7 +138,7 @@ class CounterfactualExplainer:
         if counterfactual is None:
             counterfactual = self.CF(self.decision_maker)
         critical_influences,critical_thresholds,critical_values,outcomes = self.find_critical_influences(influences,why_not,counterfactual)
-        explanations = self.assemble_critical_explanations(critical_influences,critical_values,outcomes,why_not)
+        explanations = self.assemble_critical_explanations(critical_influences,critical_values,outcomes,why_not,counterfactual)
 
         if explanations == []:
             # Need to find a partial explanation
@@ -155,10 +155,10 @@ class CounterfactualExplainer:
     '''
     EXPLANATIONS
     '''
-    def assemble_critical_explanations(self,critical_influences,critical_values,outcomes,query):
+    def assemble_critical_explanations(self,critical_influences,critical_values,outcomes,query,counterfactual):
         explanations = []
         for i in range(len(critical_influences)):
-            exp = self.Explanation(self.true_outcome,self.true_observation,query)
+            exp = self.Explanation(self.true_outcome,self.true_observation,query,counterfactual)
             exp.make_critical_explanation(critical_influences[i],critical_values[i],outcomes[i])
             explanations.append(exp)
 
@@ -213,6 +213,7 @@ class CounterfactualExplainer:
                     values = []
                     var_outcomes = []
                     for ci in critical_interventions:
+                        print(ci)
                         outcome = counterfactual.outcome(self.true_observation,counterfactual.intervention_order+[var],ci)
                         valid_outcome = self.true_outcome.valid_outcome(outcome,why_not)
                         var_outcomes.append(outcome)

@@ -88,10 +88,11 @@ class HeuristicExplanation(Explanation):
         1.00:"very sure",
     }
 
-    def __init__(self,true_outcome:HeuristicOutcome,true_observation:EngageStateObservation,query:HeuristicQuery):
+    def __init__(self,true_outcome:HeuristicOutcome,true_observation:EngageStateObservation,query:HeuristicQuery,counterfactual:HeuristicCounterfactual):
         self.true_observation = true_observation
         self.true_outcome = true_outcome
         self.query = query
+        self.counterfactual = counterfactual
         super().__init__()
 
     def make_critical_explanation(self,variable,values,outcomes):
@@ -130,13 +131,12 @@ class HeuristicExplanation(Explanation):
     
     def reason_text(self):
         if self.num_vars == 1:
-            return self.reason_text_var(self.variables[0])
+            return self.reason_text_var(self.variables[0],self.true_values[self.variables[0]])
         else:
             raise NotImplementedError("Still need to implement multi-variable explanations")
         
-    def reason_text_var(self,var):
+    def reason_text_var(self,var,true_val):
         var_name = self.var_names[var]
-        true_val = self.true_values[var]
         subject =  self.person_name(self.var_cats[var])
 
         if self.true_observation.variable_categories[var_name] == "Categorical":
@@ -203,6 +203,7 @@ class HeuristicExplanation(Explanation):
             else:
                 # True value is somewhere in between, meaning a more complex answer
                 threshold = None
+                approx_thresh = None
 
             #
             # Can start comparing var_name
@@ -533,6 +534,10 @@ class HeuristicExplanation(Explanation):
                 situation = "I wasn't reasonably sure"
             elif approx_max == 0.67:
                 situation = "I wasn't very sure"
+            else:
+                # Somewhere in between
+                situation = "I was either very sure or very unsure"
+
         elif max_val:
             # Only conerns the lowest value
             approx_min = round(values[0],2)
@@ -553,6 +558,7 @@ class HeuristicExplanation(Explanation):
                 if approx_min == 0.33 and approx_max == 0.67:
                     # This is the only valid combination unless another discretisation is introduced
                     situation = "I was a little sure, but not too sure,"
+                    
         
         if var_name == "Group Confidence":
             var_string = "whether or not {} was in a group".format(subject)
@@ -562,6 +568,11 @@ class HeuristicExplanation(Explanation):
             var_string = "whether or not {} was interested in me".format(subject)
         elif var_name == "Pose Estimation Confidence":
             var_string = "my detection of {}'s skeleton".format(subject)
+        try:
+            x = situation
+        except:
+            error_message = "var: {}, values = {}".format(var,values)
+            raise Exception(error_message)
 
         return "{} about {}".format(situation,var_string)
 
@@ -589,25 +600,148 @@ class HeuristicExplanation(Explanation):
         # TODO: Map targets to better, more readable names
         return target_name
     
-    def follow_up_question(self):
+    '''
+    FOLLOW UP
+    '''
+    
+    def follow_up_question(self,mode="body"):
+        '''
+        modes:
+            body - generate follow-ups using other bodies with the same variable
+        '''
         if len(self.variables) == 1:
             follow_up_vars = []
             follow_up_questions = []
-            if self.var_cats[self.variables[0]] not in ["ROBOT","GENERAL"]:
-                for var_cat in self.true_observation.state:
-                    if var_cat == self.var_cats[self.variables[0]] or var_cat in ["ROBOT","GENERAL"]:
-                        continue
-                    if self.var_names[self.variables[0]] in self.true_observation.state[var_cat]:
-                        follow_up_vars.append((var_cat,self.var_names[self.variables[0]]))
-                
-            for var in follow_up_vars:
-                for val in self.true_observation.variable_cardinalities[var[1]]:
-                    if val == self.true_observation.state[var[0]][var[1]]:
-                        continue
-                    num_val = val
-                    if self.true_observation.variable_categories[var[1]] == "Continuous" and var[1]!="Distance":
-                        num_val = val/max(self.true_observation.variable_cardinalities[var[1]])
-                    follow_up_questions.append((var,num_val))
-            print(follow_up_questions)
+            if mode=="body":
+                if self.var_cats[self.variables[0]] not in ["ROBOT","GENERAL"]:
+                    for var_cat in self.true_observation.state:
+                        if var_cat == self.var_cats[self.variables[0]] or var_cat in ["ROBOT","GENERAL"]:
+                            continue
+                        if self.var_names[self.variables[0]] in self.true_observation.state[var_cat]:
+                            follow_up_vars.append((var_cat,self.var_names[self.variables[0]]))
+                    
+                for var in follow_up_vars:
+                    for val in self.true_observation.variable_cardinalities[var[1]]:
+                        if val == self.true_observation.state[var[0]][var[1]]:
+                            continue
+                        num_val = val
+                        if self.true_observation.variable_categories[var[1]] == "Continuous" and var[1]!="Distance":
+                            num_val = val/max(self.true_observation.variable_cardinalities[var[1]])
+                        follow_up_questions.append((var,num_val))
+            
+            # Display followups
+            questions = []
+            right_answer = []
+            for fuq in follow_up_questions:
+                # Get follow up question
+                fuq_text = self.question_text(fuq[0][0],fuq[0][1],fuq[1])
+                questions.append(fuq_text)
+                print("\t - {}".format(fuq_text))
+                # Get right answer
+                intervention = {fuq[0][0]:{fuq[0][1]:fuq[1]}}
+                var_full_name = "{}_{}".format(fuq[0][0],fuq[0][1])
+                if fuq[0][1] != "Distance" and fuq[0][0] != "ROBOT":
+                    if self.true_observation.state[fuq[0][0]]["Distance"] == 0.1:
+                        val = 0.5
+                    else:
+                        val = 0.1
+                    intervention[fuq[0][0]]["Distance"] = val
+                    var_full_name2 = "{}_Distance".format(fuq[0][0])
+                    print("INT",intervention)
+                    right_decision = self.counterfactual.outcome(self.true_observation,self.counterfactual.intervention_order+[var_full_name,var_full_name2],intervention)
+                    print("\t\t - {}".format(right_decision))
+                    intervention[fuq[0][0]]["Distance"] = 7
+                    var_full_name2 = "{}_Distance".format(fuq[0][0])
+                    print("INT",intervention)
+                    right_decision = self.counterfactual.outcome(self.true_observation,self.counterfactual.intervention_order+[var_full_name,var_full_name2],intervention)
+                    print("\t\t - {}".format(right_decision))
         else:
             raise NotImplementedError
+        
+    def question_text(self,var_cat,var_name,value):
+        subject = self.person_name(var_cat)
+        if self.true_observation.variable_categories[var_name] == "Categorical":
+            if var_name == "Group":
+                if subject == "ROBOT":
+                    subject = "I"
+
+                if value:
+                    question = "{} was in a group with someone".format(subject)
+                else:
+                    question = "{} was not in a group anyone".format(subject)
+            elif var_name == "Motion":
+                if value == MotionActivity.NOTHING:
+                    question = "{} was doing nothing".format(subject)
+                elif value == MotionActivity.WALKING_AWAY:
+                    question = "{} was walking away from me".format(subject)
+                elif value == MotionActivity.WALKING_TOWARDS:
+                    question = "{} was walking towards me".format(subject)
+                elif value == MotionActivity.WALKING_PAST:
+                    question = "{} was walking past me".format(subject)
+            elif var_name == "Engagement Level":
+                if value == EngagementLevel.UNKNOWN:
+                    question = "I didn't know whether or not {} was interested in me".format(subject)
+                elif value == EngagementLevel.DISENGAGED:
+                    question = "{} was not interested in me".format(subject)
+                elif value == EngagementLevel.ENGAGING:
+                    question = "{} was starting to become interested in me".format(subject)
+                elif value == EngagementLevel.ENGAGED:
+                    question = "{} was interested in me".format(subject)
+                elif value == EngagementLevel.DISENGAGING:
+                    question = "{} was starting to lose interest in me".format(subject)
+            elif var_name == "Group with Robot":
+                if value:
+                    question = "{} was in a group with me".format(subject)
+                else:
+                    question = "{} was not in a group with me".format(subject)
+            elif var_name == "Waiting":
+                if value:
+                    question = "I was doing something else"
+                else:
+                    question = "I was not doing something else"
+        else:
+            if var_name in ["Group Confidence","Motion Confidence","Engagement Level Confidence","Pose Estimation Confidence"]:
+                # Subject
+                if subject == "ROBOT":
+                    subject = "I"
+                
+                # Threshold
+                feeling = self.confidence_val_texts[round(value,2)]
+
+                # Variable type
+                if var_name == "Group Confidence":
+                    var_string = "whether or not {} was in a group".format(subject)
+                elif var_name == "Motion Confidence":
+                    var_string = "{}'s motion".format(subject)
+                elif var_name == "Engagement Level Confidence":
+                    var_string = "whether or not {} was interested in me".format(subject)
+                elif var_name == "Pose Estimation Confidence":
+                    var_string = "my detection of {}'s skeleton".format(subject)
+
+
+                question = "I was {} about {}".format(feeling,var_string)
+            elif var_name == "Mutual Gaze":
+                approx_val = round(value,2)
+                if approx_val == 0.00:
+                    question = "{} was looking directly away from me".format(subject)
+                elif approx_val == 0.33:
+                    question = "{} was not really looking at me".format(subject)
+                elif approx_val == 0.67:
+                    question = "{} was looking mostly in my direction".format(subject)
+                elif approx_val == 1.00:
+                    question = "{} looking directly at me".format(subject)
+            elif var_name == "Engagement Value":
+                approx_val = round(value,2)
+                if approx_val == 0.00:
+                    question = "{} was not engaged with me at all".format(subject)
+                elif approx_val == 0.33:
+                    question = "{} was not particularly engaged with me".format(subject)
+                elif approx_val == 0.67:
+                    question = "{} was somewhat engaged with me".format(subject)
+                elif approx_val == 1.00:
+                    question = "{} was very engaged with me".format(subject)
+            elif var_name == "Distance":
+                approx_val = round(value,2)
+                question = "{} was {}m away from me".format(subject,approx_val)
+
+        return "What would I do if {}?".format(question)
