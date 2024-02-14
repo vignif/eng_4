@@ -5,13 +5,20 @@ from sensor_msgs.msg import Image
 
 from engage.decision_maker.decision_manager import DecisionManager
 from engage.explanation.hri_explainer import HRIExplainer
+from engage.explanation.heuristic_lime_explainer import HeuristicLimeExplainer
 from engage.decision_maker.engage_state import EngageState
 
 class LiveExplainer:
+    explainers = {
+        "counterfactual":HRIExplainer,
+        "heuristic_lime":HeuristicLimeExplainer,
+    }
+
     def __init__(self,
                  rgb_image_topic,
                  decision_maker,
                  buffer_time=5,
+                 explainer="counterfactual",
                  rate=20) -> None:
         self.rate = rospy.Rate(rate)
         self.decision_maker = decision_maker
@@ -22,7 +29,8 @@ class LiveExplainer:
         self.dm = DecisionManager.decision_makers[decision_maker]()
 
         # Explainer
-        self.explainer = HRIExplainer(self.dm)
+        self.explainer_name = explainer
+        self.explainer = self.explainers[explainer](self.dm)
 
         # Subscribers
         rgb_img_sub = rospy.Subscriber(rgb_image_topic,Image,callback=self.update_image_buffer)
@@ -79,11 +87,14 @@ if __name__ == "__main__":
                         type=str, default="heuristic")
     parser.add_argument("--buffer_time", help="How long the node will store images for",
                         type=int, default=5)
+    parser.add_argument("--explainer", help="Which explainer will be used",
+                        type=str, default="counterfactual")
     args = parser.parse_args()
 
     explainer = LiveExplainer(
         args.rgb_image_topic,
         args.decision_maker,
         buffer_time=args.buffer_time,
+        explainer=args.explainer,
     )
     explainer.run()

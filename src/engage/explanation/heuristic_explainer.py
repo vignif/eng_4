@@ -19,16 +19,44 @@ class HeuristicCounterfactual(Counterfactual):
         if interventions is None:
             interventions = self.interventions
 
+        '''
+        print("\n\n")
+        print("Original State: ",observation.state)
+        print("-")
+        print("Interventions: ",interventions)
+        '''
+        
+
         changes = self.apply_interventions(observation,intervention_order,interventions)
 
         state = self.full_state(observation,changes)
+
+        continuous_state = self.undsicretise_state(state,observation)
+
+        '''
+        print("Changes: ",changes)
+        print("New State: ",state)
+        '''
         
         decision_state = EngageState()
-        decision_state.dict_to_state(state,observation.bodies)
+        decision_state.dict_to_state(continuous_state,observation.bodies)
 
         dm_outcome = self.decision_maker.decide(decision_state)
 
+        '''
+        print("Decision State: ",decision_state.group_with_robot)
+        print("Outcome: ",dm_outcome.action,dm_outcome.target)
+        '''
+
         return HeuristicOutcome(dm_outcome)
+    
+    def undsicretise_state(self,state,observation:EngageStateObservation):
+        new_state = copy.deepcopy(state)
+        for key in state:
+            for var in state[key]:
+                if observation.variable_categories[var] == "Continuous" and var != "Distance":
+                    new_state[key][var] = state[key][var]/max(observation.variable_cardinalities[var])
+        return new_state
         
 
 class HeuristicQuery(Query):
@@ -88,13 +116,12 @@ class HeuristicExplanation(Explanation):
         1.00:"very sure",
     }
 
-    def __init__(self,true_outcome:HeuristicOutcome,true_observation:EngageStateObservation,query:HeuristicQuery,counterfactual:HeuristicCounterfactual,mode="body"):
+    def __init__(self,true_outcome:HeuristicOutcome,true_observation:EngageStateObservation,query:HeuristicQuery,counterfactual:HeuristicCounterfactual):
         self.true_observation = true_observation
         self.true_outcome = true_outcome
         self.query = query
         self.counterfactual = counterfactual
         self.bodies = self.get_bodies()
-        self.mode = mode
         super().__init__()
 
     def get_bodies(self):
@@ -617,64 +644,70 @@ class HeuristicExplanation(Explanation):
     '''
     
     def follow_up_question(self):
-        '''
-        modes:
-            body - generate follow-ups using other bodies with the same variable
-        '''
         if len(self.variables) == 1:
             follow_up_vars = []
             follow_up_questions = []
-            if self.mode=="body":
-                if self.var_cats[self.variables[0]] not in ["ROBOT","GENERAL"]:
-                    for var_cat in self.true_observation.state:
-                        if var_cat in ["ROBOT","GENERAL"]:
-                            continue
-                        if self.var_names[self.variables[0]] in self.true_observation.state[var_cat]:
-                            follow_up_vars.append((var_cat,self.var_names[self.variables[0]]))
-                    
-                for var in follow_up_vars:
-                    var_name = "{}_{}".format(var[0],var[1])
-                    for val in self.true_observation.variable_cardinalities[var[1]]:
-                        if val == self.true_observation.state[var[0]][var[1]]:
-                            continue
-                        if var_name == self.variables[0]:
-                            # Don't use the same body as the counterfactual
-                            continue
-                        num_val = val
-                        if self.true_observation.variable_categories[var[1]] == "Continuous" and var[1]!="Distance":
-                            num_val = val/max(self.true_observation.variable_cardinalities[var[1]])
-                        follow_up_questions.append((var,num_val))
-            
-                # Display followups
-                questions = []
-                right_answers = []
-                distractors = []
-                for fuq in follow_up_questions:
-                    # Get follow up question
-                    fuq_text = self.question_text(fuq[0][0],fuq[0][1],fuq[1])
-                    fuq_text = "What do you think I would do if {}?".format(fuq_text)
-                    questions.append(fuq_text)
-                    print("\t - {}".format(fuq_text))
-                    # Get right answer
-                    val = fuq[1]
-                    if self.true_observation.variable_categories[fuq[0][1]] == "Continuous" and fuq[0][1] != "Distance":
-                        val = val*max(self.true_observation.variable_cardinalities[fuq[0][1]])
-                    intervention = {fuq[0][0]:{fuq[0][1]:val}}
-                    var_full_name = "{}_{}".format(fuq[0][0],fuq[0][1])
-                    right_decision = self.counterfactual.outcome(self.true_observation,self.counterfactual.intervention_order+[var_full_name],intervention)
-                    print("\t\t - {}".format(right_decision))
-                    right_answers.append(right_decision)
-                    # Get Distractors
-                    distractors.append(self.get_distractors(right_decision))
-                    for distractor in distractors[-1]:
-                        #print("\t\t\t . {}".format(HeuristicOutcome(HeuristicDecision(distractor[0],distractor[1]))))
-                        pass
+            if self.var_cats[self.variables[0]] not in ["ROBOT","GENERAL"]:
+                for var_cat in self.true_observation.state:
+                    if var_cat in ["ROBOT","GENERAL"]:
+                        continue
+                    if self.var_names[self.variables[0]] in self.true_observation.state[var_cat]:
+                        follow_up_vars.append((var_cat,self.var_names[self.variables[0]]))
+                
+            for var in follow_up_vars:
+                var_name = "{}_{}".format(var[0],var[1])
+                for val in self.true_observation.variable_cardinalities[var[1]]:
+                    if val == self.true_observation.state[var[0]][var[1]]:
+                        continue
+                    if var_name == self.variables[0]:
+                        # Don't use the same body as the counterfactual
+                        continue
+                    num_val = val
+                    if self.true_observation.variable_categories[var[1]] == "Continuous" and var[1]!="Distance":
+                        num_val = val/max(self.true_observation.variable_cardinalities[var[1]])
+                    follow_up_questions.append((var,num_val))
+        
+            # Display followups
+            questions = []
+            right_answers = []
+            distractors = []
+            for fuq in follow_up_questions:
+                # Get follow up question
+                fuq_text,fuq_prelude = self.question_text(fuq[0][0],fuq[0][1],fuq[1])
+                fuq_text = "When I made the decision, {}. What do you think I would do if {}?".format(fuq_prelude,fuq_text)
+                questions.append(fuq_text)
+                print("\t - {}".format(fuq_text))
+                #print("\t - {},{}".format(fuq[1],self.true_observation.state[fuq[0][0]][fuq[0][1]]))
+                # Get right answer
+                val = fuq[1]
+                if self.true_observation.variable_categories[fuq[0][1]] == "Continuous" and fuq[0][1] != "Distance":
+                    val = val*max(self.true_observation.variable_cardinalities[fuq[0][1]])
+                intervention = {fuq[0][0]:{fuq[0][1]:val}}
+                var_full_name = "{}_{}".format(fuq[0][0],fuq[0][1])
+                right_decision = self.counterfactual.outcome(self.true_observation,self.counterfactual.intervention_order+[var_full_name],intervention)
+                print("\t\t - {}".format(right_decision))
+                right_answers.append(right_decision)
+                # Get Distractors
+                distractors.append(self.get_distractors(right_decision))
+                for distractor in distractors[-1]:
+                    print("\t\t\t . {}".format(HeuristicOutcome(HeuristicDecision(distractor[0],distractor[1]))))
+                    pass
         else:
             raise NotImplementedError
         
         return questions,right_answers,distractors
         
-    def question_text(self,var_cat,var_name,value):
+    def question_text(self,var_cat,var_name,value,prelude=None):
+        question = self.statement_text(var_cat,var_name,value)
+
+        num_val = self.true_observation.state[var_cat][var_name]
+        if self.true_observation.variable_categories[var_name] == "Continuous" and var_name!="Distance":
+            num_val = self.true_observation.state[var_cat][var_name]/max(self.true_observation.variable_cardinalities[var_name])
+        prelude = self.statement_text(var_cat,var_name,num_val)
+
+        return question,prelude
+    
+    def statement_text(self,var_cat,var_name,value):
         subject = self.person_name(var_cat)
         if self.true_observation.variable_categories[var_name] == "Categorical":
             if var_name == "Group":
@@ -682,39 +715,39 @@ class HeuristicExplanation(Explanation):
                     subject = "I"
 
                 if value:
-                    question = "{} was in a group with someone".format(subject)
+                   return "{} was in a group with someone".format(subject)
                 else:
-                    question = "{} was not in a group anyone".format(subject)
+                    return "{} was not in a group anyone".format(subject)
             elif var_name == "Motion":
                 if value == MotionActivity.NOTHING:
-                    question = "{} was doing nothing".format(subject)
+                    return "{} was doing nothing".format(subject)
                 elif value == MotionActivity.WALKING_AWAY:
-                    question = "{} was walking away from me".format(subject)
+                    return "{} was walking away from me".format(subject)
                 elif value == MotionActivity.WALKING_TOWARDS:
-                    question = "{} was walking towards me".format(subject)
+                    return "{} was walking towards me".format(subject)
                 elif value == MotionActivity.WALKING_PAST:
-                    question = "{} was walking past me".format(subject)
+                    return "{} was walking past me".format(subject)
             elif var_name == "Engagement Level":
                 if value == EngagementLevel.UNKNOWN:
-                    question = "I didn't know whether or not {} was interested in me".format(subject)
+                    return "I didn't know whether or not {} was interested in me".format(subject)
                 elif value == EngagementLevel.DISENGAGED:
-                    question = "{} was not interested in me".format(subject)
+                    return "{} was not interested in me".format(subject)
                 elif value == EngagementLevel.ENGAGING:
-                    question = "{} was starting to become interested in me".format(subject)
+                    return "{} was starting to become interested in me".format(subject)
                 elif value == EngagementLevel.ENGAGED:
-                    question = "{} was interested in me".format(subject)
+                    return "{} was interested in me".format(subject)
                 elif value == EngagementLevel.DISENGAGING:
-                    question = "{} was starting to lose interest in me".format(subject)
+                    return "{} was starting to lose interest in me".format(subject)
             elif var_name == "Group with Robot":
                 if value:
-                    question = "{} was in a group with me".format(subject)
+                    return "{} was in a group with me".format(subject)
                 else:
-                    question = "{} was not in a group with me".format(subject)
+                    return "{} was not in a group with me".format(subject)
             elif var_name == "Waiting":
                 if value:
-                    question = "I was doing something else"
+                    return "I was doing something else"
                 else:
-                    question = "I was not doing something else"
+                    return "I was not doing something else"
         else:
             if var_name in ["Group Confidence","Motion Confidence","Engagement Level Confidence","Pose Estimation Confidence"]:
                 # Subject
@@ -735,40 +768,46 @@ class HeuristicExplanation(Explanation):
                     var_string = "my detection of {}'s skeleton".format(subject)
 
 
-                question = "I was {} about {}".format(feeling,var_string)
+                return "I was {} about {}".format(feeling,var_string)
             elif var_name == "Mutual Gaze":
                 approx_val = round(value,2)
                 if approx_val == 0.00:
-                    question = "{} was looking directly away from me".format(subject)
+                    return "{} was looking directly away from me".format(subject)
                 elif approx_val == 0.33:
-                    question = "{} was not really looking at me".format(subject)
+                    return "{} was not really looking at me".format(subject)
                 elif approx_val == 0.67:
-                    question = "{} was looking mostly in my direction".format(subject)
+                    return "{} was looking mostly in my direction".format(subject)
                 elif approx_val == 1.00:
-                    question = "{} was looking directly at me".format(subject)
+                    return "{} was looking directly at me".format(subject)
             elif var_name == "Engagement Value":
                 approx_val = round(value,2)
                 if approx_val == 0.00:
-                    question = "{} was not engaged with me at all".format(subject)
+                    return "{} was not engaged with me at all".format(subject)
                 elif approx_val == 0.33:
-                    question = "{} was not particularly engaged with me".format(subject)
+                    return "{} was not particularly engaged with me".format(subject)
                 elif approx_val == 0.67:
-                    question = "{} was somewhat engaged with me".format(subject)
+                    return "{} was somewhat engaged with me".format(subject)
                 elif approx_val == 1.00:
-                    question = "{} was very engaged with me".format(subject)
+                    return "{} was very engaged with me".format(subject)
             elif var_name == "Distance":
                 approx_val = round(value,2)
-                question = "{} was {}m away from me".format(subject,approx_val)
-
-        return question
+                return "{} was {}m away from me".format(subject,approx_val)
+            
+        # Shouldn't get here
+        raise Exception(var_cat,var_name,value)
     
-    def get_distractors(self,right_decision:HeuristicDecision):
+    def get_distractors(self,right_decision:HeuristicDecision,restricted_actions=[HeuristicDecisionMSG.ELICIT_TARGET,HeuristicDecisionMSG.ELICIT_GENERAL]):
         possible_actions = []
-        for i in HeuristicDecision.interesting_actions:
+        if restricted_actions is not None:
+            action_set = restricted_actions
+        else:
+            action_set = HeuristicDecision.interesting_actions
+        for i in action_set:
             if HeuristicDecision.takes_target[i]:
                 for body in self.bodies:
                     if not(i == right_decision.action and body == right_decision.target):
                         possible_actions.append((i,body))
             else:
-                possible_actions.append((i,None))
+                if i != right_decision.action:
+                    possible_actions.append((i,None))
         return possible_actions

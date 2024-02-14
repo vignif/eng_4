@@ -23,7 +23,7 @@ class SimpleTargetDecisionMaker(DecisionMaker):
         if decision.action != HeuristicDecisionMSG.NOTHING and decision.action != HeuristicDecisionMSG.WAIT:
             self.last_decision_time = time
 
-    def decide(self,state:EngageState):
+    def decide(self,state:EngageState,discretise=True):
         target = None
         action = None
 
@@ -35,12 +35,34 @@ class SimpleTargetDecisionMaker(DecisionMaker):
             action = HeuristicDecisionMSG.NOTHING
         else:
             # Find the bodies that maximise the engagement score
-            scores = {k: v for k, v in state.engagement_values.items() if v is not None}
+            '''
+            print("Bodies: ",state.bodies)
+            print("EVs: ",state.engagement_values)
+            print("Ds: ",state.distances)
+            print("MGs: ",state.mutual_gazes)
+            '''
+
+            scores = {k: self.discrete_score(v) for k, v in state.engagement_values.items() if v is not None}
             best_people = [kv[0] for kv in scores.items() if kv[1] == max(scores.values())]
             if len(best_people) == 0:
                 action = action = HeuristicDecisionMSG.NOTHING
             else:
-                action = HeuristicDecisionMSG.ELICIT_TARGET
-                target = sorted(best_people)[0]
+                potential_target = sorted(best_people)[0]
+                if scores[potential_target] == 0:
+                    action = HeuristicDecisionMSG.ELICIT_GENERAL
+                else:
+                    action = HeuristicDecisionMSG.ELICIT_TARGET
+                    target = potential_target
+
+            '''
+            print("Scores: ",scores)
+            print("Best People: ",best_people)
+            print("{}_{}".format(action,target))
+            '''
 
         return HeuristicDecision(action,target)
+    
+    def discrete_score(self,score):
+        # NOTE: This is here so that discretisation in the explanations doesn't lead to weird results
+        # e.g. If A has score=0.5 and B has a score of 0.51, undiscretised chooses B but discretised has them both as 0.5 and picks A, resulting in no changes producing a new result
+        return EngageState.float_bucket(score)

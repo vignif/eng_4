@@ -56,3 +56,25 @@ class HRIExplainer:
         for exp,i in zip(explanations,range(len(explanations))):
             print("{}: {}".format(i,exp.present_explanation()))
             questions,right_answers,distractors = exp.follow_up_question()
+        #self.present_combined_exps_questions(explanations)
+        
+    def present_combined_exps_questions(self,explanations):
+        count = 1
+        for i in range(len(explanations)):
+            for j in range(i+1,len(explanations)):
+                print("===Explanation {}===".format(count))
+                print("{}.a - {}".format(count,explanations[i].present_explanation()))
+                print("{}.b - {}".format(count,explanations[j].present_explanation()))
+                print("\n")
+                questions,right_answers,distractors = self.generate_questions(explanations[i],explanations[j])
+
+                count += 1
+
+    def generate_questions(self,exp1:HeuristicExplanation,exp2:HeuristicExplanation):
+        var1 = exp1.variables[0]
+        var2 = exp2.variables[0]
+
+        print("{} - {}".format(var1,exp1.explanation_values))
+        print("{} - {}".format(var2,exp2.explanation_values))
+
+        return [],[],[]
