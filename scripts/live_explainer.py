@@ -1,6 +1,7 @@
 import rospy
 import argparse
 
+
 from sensor_msgs.msg import Image
 
 from engage.decision_maker.decision_manager import DecisionManager
@@ -70,6 +71,9 @@ class LiveExplainer:
 
             # Explain
             self.explainer.explain()
+
+    def save_image(self,img):
+        pass
 
 
     def run(self):

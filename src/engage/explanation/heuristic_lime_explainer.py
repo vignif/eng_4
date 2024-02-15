@@ -22,12 +22,15 @@ class HeuristicLimeExplainer:
         self.indices = copy.deepcopy(self.state)
         self.vector_vars = []
         self.var_names = []
+        self.categorical_features = []
         i = 0
         for key in self.state:
             for var in self.state[key]:
                 self.indices[key][var] = i
                 self.vector_vars.append((key,var))
                 self.var_names.append("{}_{}".format(key,var))
+                if EngageStateObservation.variable_categories[var] == "Categorical":
+                    self.categorical_features.append(i)
                 i += 1
         self.num_vars = len(self.var_names)
 
@@ -53,27 +56,47 @@ class HeuristicLimeExplainer:
 
         self.true_state_vec = self.state_to_vec(self.state)
         self.true_decision_vec = self.decision_to_vec(self.true_outcome)
+        print("Creating sample data...")
         self.training_set = self.fabricate_training_set()
-        self.explainer = lime.lime_tabular.LimeTabularExplainer(self.training_set, feature_names=self.var_names, class_names=self.action_names, discretize_continuous=True)
+        print("Sample data created")
+        self.explainer = lime.lime_tabular.LimeTabularExplainer(self.training_set, feature_names=self.var_names, class_names=self.action_names, discretize_continuous=True, categorical_features=self.categorical_features)
 
     def explain(self,**kwargs):
+        print("===Observation===")
+        print(self.true_observation)
+        print("===Decision===")
+        print(self.true_outcome)
+        
         exp = self.explainer.explain_instance(self.true_state_vec, self.predict, num_features=6, top_labels=1)
-        print(exp)
+        exp_mapping = exp.as_map()
+        var_map = {}
+        for act_i in exp_mapping:
+            var_map[self.action_names[act_i]] = {}
+            for i_prob in exp_mapping[act_i]:
+                var_map[self.action_names[act_i]][self.var_names[i_prob[0]]] = i_prob[1]
+        print("===LIME Explanation===")
+        print(var_map)
 
-    def fabricate_training_set(self):
-        # TODO
-        pass
+    def fabricate_training_set(self,n=5000):
+        data = []
+        state_observation = EngageStateObservation(self.state,self.bodies)
+        for i in range(n):
+            sample_state = state_observation.sample_state()
+            state_vec = self.state_to_vec(sample_state)
+            data.append(state_vec)
+        return np.array(data)
 
-    def predict(self,feature_vector):
-        state = self.vec_to_state(feature_vector)
-        decision_state = EngageState()
-        decision_state.dict_to_state(state,self.bodies)
+    def predict(self,data):
+        probs = []
+        for i in range(data.shape[0]):
+            state = self.vec_to_state(data[i,:])
+            decision_state = EngageState()
+            decision_state.dict_to_state(state,self.bodies)
 
-        decision = self.decision_maker.decide(decision_state)
-        dec_vec = self.decision_to_vec(decision)
-        probs = np.zeros((5000,self.num_actions))
-        probs[0,:] = dec_vec
-        return probs
+            decision = self.decision_maker.decide(decision_state)
+            dec_vec = self.decision_to_vec(decision)
+            probs.append(dec_vec)
+        return np.array(probs)
         
 
     def state_to_vec(self,state):
@@ -83,11 +106,7 @@ class HeuristicLimeExplainer:
         return np.array(vec)
     
     def vec_to_state(self,vector):
-        print(self.num_vars,self.num_actions)
         state = copy.deepcopy(self.state)
-        for row in range(5000):
-            print(vector[row,:])
-        vector = vector[0,:]
         for i in range(len(vector)):
             var = self.vector_vars[i]
             # TODO: Undiscretise
@@ -101,4 +120,4 @@ class HeuristicLimeExplainer:
         else:
             action_vector[self.action_indices[decision.action]] = 1
 
-        return np.array(action_vector)
+        return action_vector

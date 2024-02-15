@@ -1,10 +1,13 @@
 import itertools
 import copy
 import networkx as nx
+import numpy as np
 
 from engage.explanation.counterfactual_explainer import Observation
 from engage.msg import EngagementLevel
 from engage.decision_maker.engage_state import EngageState
+
+ENGAGEMENT_GROUP_THRESH = 0.75
 
 class SimpleCausalModel:
     def __init__(self,bodies,cardinalities) -> None:
@@ -57,9 +60,10 @@ class SimpleCausalModel:
                 else:
                     el = EngagementLevel.DISENGAGED
                 changes[u_list[0]]["Engagement Level"] = el
+            # TODO: Parameters
             elif u_list[1] == "Engagement Value" and v_list[1] == "Group with Robot":
                 ev = var_vals["Engagement Value"]/max(self.cardinalities["Engagement Value"])
-                if ev > 0.75:
+                if ev > ENGAGEMENT_GROUP_THRESH:
                     changes[u_list[0]]["Group with Robot"] = True
                 else:
                     changes[u_list[0]]["Group with Robot"] = False
@@ -213,6 +217,56 @@ class EngageStateObservation(Observation):
                 return True
             else:
                 return False
+            
+    def sample_state(self):
+        new_state = copy.deepcopy(self.state)
+        # Start with root nodes
+        new_state["GENERAL"]["Waiting"] = np.random.choice(self.variable_cardinalities["Waiting"]) 
+        new_state["ROBOT"]["Group Confidence"] = np.random.choice(self.variable_cardinalities["Group Confidence"])/max(self.variable_cardinalities["Group Confidence"])
+        new_state["ROBOT"]["Group"] = False
+        for body in self.bodies:
+            for var in [
+                "Motion",
+                "Motion Confidence",
+                "Distance",
+                "Mutual Gaze",
+                "Pose Estimation Confidence",
+                "Group Confidence",
+                "Engagement Level Confidence",
+            ]:
+                if self.variable_categories[var] == "Continuous" and var != "Distance":
+                    new_state[body][var] = np.random.choice(self.variable_cardinalities[var])/max(self.variable_cardinalities[var])
+                else:
+                    new_state[body][var] = np.random.choice(self.variable_cardinalities[var])
+            # Other nodes that are causally related
+            new_state[body]["Engagement Value"] = new_state[body]["Mutual Gaze"]/new_state[body]["Distance"]
+            new_state[body]["Engagement Value"] = max(new_state[body]["Engagement Value"],0)
+            new_state[body]["Engagement Value"] = min(new_state[body]["Engagement Value"],1)
+            if new_state[body]["Engagement Value"] > 0.75:
+                el = EngagementLevel.ENGAGED
+            elif new_state[body]["Engagement Value"] > 0.5:
+                el = EngagementLevel.ENGAGING
+            elif new_state[body]["Engagement Value"] > 0.25:
+                el = EngagementLevel.DISENGAGING
+            else:
+                el = EngagementLevel.DISENGAGED
+            new_state[body]["Engagement Level"] = el
+
+            if new_state[body]["Engagement Value"] > ENGAGEMENT_GROUP_THRESH:
+                new_state[body]["Group with Robot"] = True
+                new_state["ROBOT"]["Group"] = True
+            else:
+                new_state[body]["Group with Robot"] = False
+
+            if new_state[body]["Group with Robot"]:
+                new_state[body]["Group"] = True
+            else:
+                if len(self.bodies) == 1:
+                    new_state[body]["Group"] = False
+                else:
+                    new_state[body]["Group"] = np.random.choice([True,False])
+        return new_state
+
     
     def __str__(self) -> str:
         return str(self.state)
