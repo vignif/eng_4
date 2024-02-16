@@ -1,4 +1,5 @@
 import copy
+import numpy as np
 
 from engage.explanation.counterfactual_explainer import Outcome,Query,Counterfactual,Explanation
 from engage.decision_maker.heuristic_decision import HeuristicDecision
@@ -637,6 +638,8 @@ class HeuristicExplanation(Explanation):
 
     def person_name(self,target_name):
         # TODO: Map targets to better, more readable names
+        if target_name == "NEWPERSON":
+            return "Bob"
         return target_name
     
     '''
@@ -811,3 +814,61 @@ class HeuristicExplanation(Explanation):
                 if i != right_decision.action:
                     possible_actions.append((i,None))
         return possible_actions
+    
+    def follow_up_new_person(self):
+        if self.var_cats[self.variables[0]] in ["GENERAL","ROBOT"]:
+            return [],[],[]
+
+        new_person = {
+            "Group":False,
+            "Group Confidence":1,
+            "Motion":MotionActivity.NOTHING,
+            "Motion Confidence":1,
+            "Engagement Level":EngagementLevel.DISENGAGED,
+            "Engagement Level Confidence":1,
+            "Group with Robot":False,
+            "Mutual Gaze":1,
+            "Engagement Value":0.5,
+            "Pose Estimation Confidence":1,
+            "Distance":2,
+            "Waiting":False,
+        }
+
+        new_state = copy.deepcopy(self.true_observation.state)
+        new_state["NEWPERSON"] = new_person
+
+        # New observation
+        observation = EngageStateObservation(new_state,self.bodies+["NEWPERSON"])
+        var_name = self.var_names[self.variables[0]]
+        intervention_order = self.counterfactual.intervention_order+["NEWPERSON_{}".format(var_name)]
+        base_fuq_text = "Imagine there was a person, Bob, who was "
+
+        if var_name != "Mutual Gaze":
+            if new_person["Mutual Gaze"] == 0:
+                mg_text = "not looking at me at all"
+            elif new_person["Mutual Gaze"] == 0.33:
+                mg_text = "not really looking at me"
+            elif new_person["Mutual Gaze"] == 0.67:
+                mg_text = "looking in my general direction"
+            elif new_person["Mutual Gaze"] == 1:
+                mg_text = "looking directly at me"
+
+        if var_name == "Mutual Gaze":
+            base_fuq_text += "standing {}m away from me.".format(new_person["Distance"])
+        elif var_name == "Distance":
+            base_fuq_text += "{}.".format(mg_text)
+        else:
+            base_fuq_text += "standing {}m away from me and {}.".format(new_person["Distance"],mg_text)
+        
+        base_fuq_text += " What would I do if "
+        
+
+        for val in observation.variable_cardinalities[var_name]:
+            cont_val = observation.real_value(var_name,val)
+            intervention = {"NEWPERSON":{var_name:cont_val}}
+            outcome = self.counterfactual.outcome(observation,intervention_order,intervention)
+            q_text = base_fuq_text + self.statement_text("NEWPERSON",var_name,cont_val) + "?"
+            print("\t - {}".format(q_text))
+            print("\t\t . {}".format(outcome))
+
+        return [],[],[]

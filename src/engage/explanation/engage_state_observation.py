@@ -188,15 +188,16 @@ class EngageStateObservation(Observation):
 
         return self.variable_categories[var]
     
+    def real_value(self,var,val,discrete=False):
+        if not discrete and self.variable_categories[var] == "Continuous" and var != "Distance":
+            return val/max(self.variable_cardinalities[var])
+        else:
+            return val
+    
     def value_of_variable_in_assignment(self,var,assignment,discrete=False):
         var_name = var.split("_")
         discrete_val = assignment[var_name[0]][var_name[1]]
-        if discrete or self.variable_categories[var_name[1]] == "Categorical":
-            return discrete_val
-        elif self.variable_categories[var_name[1]] == "Continuous" and var_name[1]=="Distance":
-            return discrete_val
-        else:
-            return discrete_val/max(self.variable_cardinalities[var_name[1]])
+        return self.real_value(var_name[1],discrete_val,discrete=discrete)
         
     def form_critical_set(self,variable,values):
         var_name = variable.split("_")

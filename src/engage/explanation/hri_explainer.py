@@ -55,7 +55,8 @@ class HRIExplainer:
         print("===Possible Explanations===")
         for exp,i in zip(explanations,range(len(explanations))):
             print("{}: {}".format(i,exp.present_explanation()))
-            questions,right_answers,distractors = exp.follow_up_question()
+            #questions,right_answers,distractors = exp.follow_up_question()
+            questions,right_answers,distractors = exp.follow_up_new_person()
         #self.present_combined_exps_questions(explanations)
         
     def present_combined_exps_questions(self,explanations):

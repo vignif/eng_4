@@ -1,6 +1,7 @@
 import rospy
 import argparse
-
+from cv_bridge import CvBridge, CvBridgeError
+import cv2
 
 from sensor_msgs.msg import Image
 
@@ -32,6 +33,8 @@ class LiveExplainer:
         # Explainer
         self.explainer_name = explainer
         self.explainer = self.explainers[explainer](self.dm)
+
+        self.cv_bridge = CvBridge()
 
         # Subscribers
         rgb_img_sub = rospy.Subscriber(rgb_image_topic,Image,callback=self.update_image_buffer)
@@ -65,6 +68,7 @@ class LiveExplainer:
                 return None
             
             dec_img = self.image_buffer[dec_index]
+            self.save_image(dec_img)
 
             # Set up explainer
             self.explainer.setup_explanation(dec,query=None,decision_maker=self.decision_maker)
@@ -73,7 +77,13 @@ class LiveExplainer:
             self.explainer.explain()
 
     def save_image(self,img):
-        pass
+        try:
+            cv2_img = self.cv_bridge.imgmsg_to_cv2(img, "bgr8")
+        except CvBridgeError:
+            raise CvBridgeError
+        else:
+            # Save your OpenCV2 image as a jpeg 
+            cv2.imwrite('/home/tamlin/engage/latest_decision.jpeg', cv2_img)
 
 
     def run(self):

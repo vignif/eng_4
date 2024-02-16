@@ -66,16 +66,18 @@ class HeuristicLimeExplainer:
         print(self.true_observation)
         print("===Decision===")
         print(self.true_outcome)
-        
-        exp = self.explainer.explain_instance(self.true_state_vec, self.predict, num_features=6, top_labels=1)
+        print("===LIME Explanation===")
+        exp = self.explainer.explain_instance(self.true_state_vec, self.predict, num_features=10, top_labels=1)
         exp_mapping = exp.as_map()
         var_map = {}
         for act_i in exp_mapping:
             var_map[self.action_names[act_i]] = {}
+            print(self.action_names[act_i])
             for i_prob in exp_mapping[act_i]:
                 var_map[self.action_names[act_i]][self.var_names[i_prob[0]]] = i_prob[1]
-        print("===LIME Explanation===")
-        print(var_map)
+                print("\t - {}:{}".format(self.var_names[i_prob[0]],i_prob[1]))
+        
+        #print(var_map)
 
     def fabricate_training_set(self,n=5000):
         data = []
