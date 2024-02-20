@@ -1,4 +1,4 @@
-import copy
+import numpy as np
 
 from engage.decision_maker.engage_state import EngageState
 from engage.explanation.engage_state_observation import EngageStateObservation
@@ -7,8 +7,11 @@ from engage.msg import HeuristicDecision as HeuristicDecisionMSG
 from engage.decision_maker.heuristic_decision import HeuristicDecision
 from engage.explanation.counterfactual_explainer import CounterfactualExplainer
 from engage.explanation.heuristic_explainer import HeuristicCounterfactual,HeuristicExplanation
+from engage.explanation.explain_test.heuristic_explainability_test import HeuristicExplainabilityTest
 
 class HRIExplainer:
+    obs_type = EngageStateObservation
+
     def __init__(self,decision_maker):
         self.decision_maker = decision_maker
 
@@ -21,6 +24,7 @@ class HRIExplainer:
         else:
             self.query = DecisionManager.decision_queries[decision_maker]()
         self.true_outcome = DecisionManager.decision_outcomes[decision_maker](decision_state_msg.decision)
+        self.explainability_test = DecisionManager.decision_explainability_tests[decision_maker]
 
         return self.validate_query()
 
@@ -40,6 +44,18 @@ class HRIExplainer:
 
         return text_explanation is None,text_explanation
     
+    def generate_explainability_test(self,group,var_nums,ignore_uninteresting=True,max_depth=2):
+        '''
+        Group 0 - control
+        Group 1 - explanation but not counterfactial
+        Group 2 - explanation and counterfactual
+        '''
+        # First generate explanations
+        cfx = CounterfactualExplainer(self.true_observation,self.true_outcome,HeuristicCounterfactual,self.decision_maker,HeuristicExplanation)
+        explanations = cfx.explain(self.query,max_depth)
+        
+        return self.explainability_test(explanations,group,var_nums,ignore_uninteresting=ignore_uninteresting)
+
     def explain(self,display=True,max_depth=2):
         self.display = display
         if self.display:

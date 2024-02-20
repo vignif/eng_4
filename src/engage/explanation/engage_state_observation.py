@@ -271,3 +271,10 @@ class EngageStateObservation(Observation):
     
     def __str__(self) -> str:
         return str(self.state)
+    
+    @staticmethod
+    def variable_counter():
+        counter = copy.deepcopy(EngageStateObservation.variable_cardinalities)
+        for var in counter:
+            counter[var] = 0
+        return counter

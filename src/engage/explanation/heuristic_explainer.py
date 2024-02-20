@@ -90,6 +90,12 @@ class HeuristicOutcome(Outcome):
     def __str__(self):
         return "<{},{}>".format(HeuristicDecision.action_names[self.action],self.target)
     
+    def string_action(self):
+        return HeuristicDecision.action_names[self.action]
+    
+    def string_target(self):
+        return self.target if self.target is not None else "None"
+    
     def valid_outcome(self,outcome,query):
         
         if query.is_none():
@@ -138,29 +144,48 @@ class HeuristicExplanation(Explanation):
         self.explanation_values = {variable:values}
         self.outcomes = {variable:outcomes}
         
-    def present_explanation(self,counterfactual=True):
+    def present_explanation(self):
         explanation_text = self.true_action_text() + " because " + self.reason_text() + "."
-        if counterfactual:
-            explanation_text += self.counterfactual_explanation_component()
-        return explanation_text
-
-    def true_action_text(self):
-        if self.true_outcome.action == HeuristicDecisionMSG.NOTHING:
-            text = "I did nothing"
-        elif self.true_outcome.action == HeuristicDecisionMSG.WAIT:
-            text = "I waited for my action to execute"
-        elif self.true_outcome.action == HeuristicDecisionMSG.MAINTAIN:
-            text = "I tried to keep interacting with {}".format(self.person_name(self.true_outcome.target))
-        elif self.true_outcome.action == HeuristicDecisionMSG.RECAPTURE:
-            text = "I tried to recapture the attention of {}".format(self.person_name(self.true_outcome.target))
-        elif self.true_outcome.action == HeuristicDecisionMSG.ELICIT_GENERAL:
-            text = "I tried to attract attention from anyone around me"
-        elif self.true_outcome.action == HeuristicDecisionMSG.ELICIT_TARGET:
-            text = "I tried to get {} to talk with me".format(self.person_name(self.true_outcome.target))
+        return explanation_text,self.counterfactual_explanation_component()
+    
+    def future_outcome_text(self,outcome):
+        if outcome.action == HeuristicDecisionMSG.NOTHING:
+            text = "I will do nothing"
+        elif outcome.action == HeuristicDecisionMSG.WAIT:
+            text = "I will wait for my action to execute"
+        elif outcome.action == HeuristicDecisionMSG.MAINTAIN:
+            text = "I will try to keep interacting with {}".format(self.person_name(outcome.target))
+        elif outcome.action == HeuristicDecisionMSG.RECAPTURE:
+            text = "I will try to recapture the attention of {}".format(self.person_name(outcome.target))
+        elif outcome.action == HeuristicDecisionMSG.ELICIT_GENERAL:
+            text = "I will try to attract attention from anyone around me"
+        elif outcome.action == HeuristicDecisionMSG.ELICIT_TARGET:
+            text = "I will try to get {} to talk with me".format(self.person_name(outcome.target))
         else:
             raise ValueError
         
         return text
+    
+    def outcome_text(self,outcome):
+        if outcome.action == HeuristicDecisionMSG.NOTHING:
+            text = "I did nothing"
+        elif outcome.action == HeuristicDecisionMSG.WAIT:
+            text = "I waited for my action to execute"
+        elif outcome.action == HeuristicDecisionMSG.MAINTAIN:
+            text = "I tried to keep interacting with {}".format(self.person_name(outcome.target))
+        elif outcome.action == HeuristicDecisionMSG.RECAPTURE:
+            text = "I tried to recapture the attention of {}".format(self.person_name(outcome.target))
+        elif outcome.action == HeuristicDecisionMSG.ELICIT_GENERAL:
+            text = "I tried to attract attention from anyone around me"
+        elif outcome.action == HeuristicDecisionMSG.ELICIT_TARGET:
+            text = "I tried to get {} to talk with me".format(self.person_name(outcome.target))
+        else:
+            raise ValueError
+        
+        return text
+
+    def true_action_text(self):
+        return self.outcome_text(self.true_outcome)
     
     def reason_text(self):
         if self.num_vars == 1:
@@ -799,15 +824,21 @@ class HeuristicExplanation(Explanation):
         # Shouldn't get here
         raise Exception(var_cat,var_name,value)
     
-    def get_distractors(self,right_decision:HeuristicDecision,restricted_actions=[HeuristicDecisionMSG.ELICIT_TARGET,HeuristicDecisionMSG.ELICIT_GENERAL]):
+    def get_distractors(self,right_decision:HeuristicDecision,restricted_actions=[HeuristicDecisionMSG.ELICIT_TARGET,HeuristicDecisionMSG.ELICIT_GENERAL],new_person=True):
         possible_actions = []
         if restricted_actions is not None:
             action_set = restricted_actions
         else:
             action_set = HeuristicDecision.interesting_actions
+
+        if new_person:
+            bodies = self.bodies + ["NEWPERSON"]
+        else:
+            bodies = self.bodies
+    
         for i in action_set:
             if HeuristicDecision.takes_target[i]:
-                for body in self.bodies:
+                for body in bodies:
                     if not(i == right_decision.action and body == right_decision.target):
                         possible_actions.append((i,body))
             else:
@@ -817,8 +848,9 @@ class HeuristicExplanation(Explanation):
     
     def follow_up_new_person(self):
         if self.var_cats[self.variables[0]] in ["GENERAL","ROBOT"]:
-            return [],[],[]
+            return "",[],[]
 
+        # TODO: Change based on real people's distances
         new_person = {
             "Group":False,
             "Group Confidence":1,
@@ -841,7 +873,7 @@ class HeuristicExplanation(Explanation):
         observation = EngageStateObservation(new_state,self.bodies+["NEWPERSON"])
         var_name = self.var_names[self.variables[0]]
         intervention_order = self.counterfactual.intervention_order+["NEWPERSON_{}".format(var_name)]
-        base_fuq_text = "Imagine there was a person, Bob, who was "
+        context_text = "Imagine there was a person, Bob, who was "
 
         if var_name != "Mutual Gaze":
             if new_person["Mutual Gaze"] == 0:
@@ -853,22 +885,44 @@ class HeuristicExplanation(Explanation):
             elif new_person["Mutual Gaze"] == 1:
                 mg_text = "looking directly at me"
 
+        # TODO: Instead of saying how far, say closer than A or further than B, etc.
         if var_name == "Mutual Gaze":
-            base_fuq_text += "standing {}m away from me.".format(new_person["Distance"])
+            context_text += "standing {}m away from me.".format(new_person["Distance"])
         elif var_name == "Distance":
-            base_fuq_text += "{}.".format(mg_text)
+            context_text += "{}.".format(mg_text)
         else:
-            base_fuq_text += "standing {}m away from me and {}.".format(new_person["Distance"],mg_text)
+            context_text += "standing {}m away from me and {}.".format(new_person["Distance"],mg_text)
         
-        base_fuq_text += " What would I do if "
+        base_question_text = " What would I do if "
         
 
+        question_texts = []
+        outcomes = []
         for val in observation.variable_cardinalities[var_name]:
             cont_val = observation.real_value(var_name,val)
             intervention = {"NEWPERSON":{var_name:cont_val}}
             outcome = self.counterfactual.outcome(observation,intervention_order,intervention)
-            q_text = base_fuq_text + self.statement_text("NEWPERSON",var_name,cont_val) + "?"
-            print("\t - {}".format(q_text))
-            print("\t\t . {}".format(outcome))
+            outcomes.append(outcome)
+            q_text = base_question_text + self.statement_text("NEWPERSON",var_name,cont_val) + "?"
+            question_texts.append(q_text)
 
-        return [],[],[]
+        return context_text,question_texts,outcomes
+    
+    def generate_distractors(self,right_answer:HeuristicOutcome,restricted_actions=None):
+        distractors = self.get_distractors(right_answer,restricted_actions=restricted_actions)
+        chosen_distractor_indices = np.random.choice(range(len(distractors)), 2, replace=False)
+        chosen_distractors = [HeuristicOutcome(HeuristicDecision(distractors[i][0],distractors[i][1])) for i in chosen_distractor_indices]
+
+        answer_outcomes = [right_answer] + chosen_distractors
+        indices = [0,1,2]
+        np.random.shuffle(indices)
+        right_answer_index = indices.index(0)
+
+        answer_texts = []
+        answer_components = {"Actions":[],"Targets":[]}
+        for i in indices:
+            answer_texts.append(self.future_outcome_text(answer_outcomes[i]))
+            answer_components["Actions"].append(answer_outcomes[i].string_action())
+            answer_components["Targets"].append(answer_outcomes[i].string_target())
+        
+        return answer_texts,right_answer_index,answer_components

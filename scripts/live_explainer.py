@@ -2,13 +2,14 @@ import rospy
 import argparse
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
+import copy
 
 from sensor_msgs.msg import Image
 
 from engage.decision_maker.decision_manager import DecisionManager
 from engage.explanation.hri_explainer import HRIExplainer
 from engage.explanation.heuristic_lime_explainer import HeuristicLimeExplainer
-from engage.decision_maker.engage_state import EngageState
+from explanation_msgs.msg import Explainability
 
 class LiveExplainer:
     explainers = {
@@ -19,6 +20,7 @@ class LiveExplainer:
     def __init__(self,
                  rgb_image_topic,
                  decision_maker,
+                 groups = [0,1,2],
                  buffer_time=5,
                  explainer="counterfactual",
                  rate=20) -> None:
@@ -44,9 +46,17 @@ class LiveExplainer:
             callback=self.decision_state_callback
             )
         
+        # Publishers
+        self.et_pub = rospy.Publisher("/explanation_test/explanation",Explainability,queue_size=1)
+        
         # Image buffer
         self.image_buffer = []
         self.image_times = []
+
+        # Explainability Test
+        self.var_nums = self.explainer.obs_type.variable_counter()
+        self.groups = groups
+        self.curr_group_index = 0
 
     def update_image_buffer(self,rgb_img):
         self.image_buffer.append(rgb_img)
@@ -68,13 +78,17 @@ class LiveExplainer:
                 return None
             
             dec_img = self.image_buffer[dec_index]
-            self.save_image(dec_img)
 
             # Set up explainer
             self.explainer.setup_explanation(dec,query=None,decision_maker=self.decision_maker)
 
             # Explain
-            self.explainer.explain()
+            #self.explainer.explain()
+            explainability_test = self.explainer.generate_explainability_test(self.groups[self.curr_group_index],self.var_nums)
+            self.publish_explainability_test(explainability_test,dec_img)
+
+            # Update group
+            self.curr_group_index = (self.curr_group_index + 1) % len(self.groups)
 
     def save_image(self,img):
         try:
@@ -84,6 +98,11 @@ class LiveExplainer:
         else:
             # Save your OpenCV2 image as a jpeg 
             cv2.imwrite('/home/tamlin/engage/latest_decision.jpeg', cv2_img)
+
+    def publish_explainability_test(self,et_test,image):
+        message = et_test.to_message(image)
+        print(message)
+        self.et_pub.publish(message)
 
 
     def run(self):
@@ -103,12 +122,28 @@ if __name__ == "__main__":
                         type=int, default=5)
     parser.add_argument("--explainer", help="Which explainer will be used",
                         type=str, default="counterfactual")
+    parser.add_argument("--groups", help="Which groups to include. all = [0,1,2]. control = [0]. nocf = [1]. full = [2]. nomid = [0,2].",
+                        type=str, default="all")
     args = parser.parse_args()
+
+    if args.groups == "all":
+        groups = [0,1,2]
+    elif args.groups == "control":
+        groups = [0]
+    elif args.groups == "nocf":
+        groups = [1]
+    elif args.groups == "full":
+        groups = [2]
+    elif args.groups == "nomid":
+        groups = [0,2]
+    else:
+        raise Exception(args.groups)
 
     explainer = LiveExplainer(
         args.rgb_image_topic,
         args.decision_maker,
         buffer_time=args.buffer_time,
         explainer=args.explainer,
+        groups=groups,
     )
     explainer.run()
