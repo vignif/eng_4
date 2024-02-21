@@ -53,6 +53,7 @@ Once the node ([/pose](/scripts/pose.py)) is running, the following topics will 
 - /humans/bodies/<body_id>/body_orientation, geometry_msgs/Vector3Stamped - the orientation of the torso for each body in the world frame
 - /humans/bodies/<body_id>/face_orientation, geometry_msgs/Vector3Stamped - the orientation of the face for each body in the world frame
 - /humans/bodies/<body_id>/skeleton2d, hri_msgs/Skeleton2D - the 2D skeleton keypoint positions in the camera frame
+- /humans/bodies/positions, engage_msgs/PeoplePositions - the 3d and 2d positions of a point for each person, used mainly for labelling
 
 ## High-Level Features
 
