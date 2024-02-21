@@ -1,0 +1,69 @@
+<launch>
+    <arg name="exp"/>
+
+    <arg name="cam_name" default="camera"/>
+    <arg name="rgb_img" default="/$(arg cam_name)/color/image_raw"/>
+    <arg name="dep_img" default="/$(arg cam_name)/depth/image_rect_raw"/>
+    <arg name="rgb_inf" default="/$(arg cam_name)/color/camera_info"/>
+    <arg name="dep_inf" default="/$(arg cam_name)/depth/camera_info"/>
+    <arg name="pos_img" default="/opendr/pose_img"/>
+    <arg name="cam_frame" default="sellion_link"/>
+    <arg name="world_frame" default="base_link"/>
+
+    <arg name="engagement_threshold" default="0.55"/>
+    <arg name="max_angle" default="1.57079632679"/>
+
+    <arg name="bag_dir" default="$(find engage)/rosbags"/>
+    <arg name="robot" default="True"/>
+    <arg name="decision_maker" default="simple_target"/>
+    <arg name="robot_controller" default="simple_target_ari_controller"/>
+    <arg name="z_offset" default="0.3"/>
+    <arg name="reduced_action_space" default="True"/>
+    <arg name="record_cam" default="false"/>
+    <arg name="language" default="english"/>
+    <arg name="rosbag_duration" default="2"/>
+    <arg name="wait_time" default="5"/>
+    <arg name="wait_deviation" default="1"/>
+
+    <arg name="explain_image_buffer" default="5"/>
+    <arg name="explainer" default="counterfactual"/>
+    <arg name="groups" default="all"/>
+    
+    <param name="exp_name" type="str" value="$(arg exp)"/>
+    <param name="logbag" type="str" value="$(find engage)"/>
+
+    
+    <group if="$(arg record_cam)">
+        <node pkg="rosbag" type="record" name="rosbag_cam"
+            args="-O $(arg bag_dir)/$(arg exp).bag --split --duration=$(arg rosbag_duration)m /$(arg cam_name)/color/image_raw /$(arg cam_name)/depth/image_rect_raw /$(arg cam_name)/color/camera_info /$(arg cam_name)/depth/camera_info"
+            />
+    </group>
+
+    <node pkg="rosbag" type="record" name="rosbag_record"
+        args="-O $(arg bag_dir)/logbags/$(arg exp).bag --split --duration=$(arg rosbag_duration)m  $(arg pos_img) -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups /hri_engage/decision_states"
+        />
+
+    <node pkg="rosbag" type="record" name="results_record"
+        args="-O $(arg bag_dir)/prediction_experiment/$(arg exp).bag --split --duration=$(arg rosbag_duration)m /hri_engage/decision_states /explanation_test/explanation"
+        />
+
+    <node name="pose" pkg="engage" type="pose.py"
+        args="-i $(arg rgb_img) -d $(arg dep_img) -ii $(arg rgb_inf) -di $(arg dep_inf) -p $(arg pos_img) 
+        --camera_frame $(arg cam_frame) --world_frame $(arg world_frame)"
+        />
+
+    <node name="engagement" pkg="engage" type="engagement.py"
+        args="--camera_frame $(arg cam_frame) --world_frame $(arg world_frame) --engagement_threshold $(arg engagement_threshold) 
+        --max_angle $(arg max_angle)"
+        />
+
+    <node name="decision" pkg="engage" type="decide.py"
+        args="-d $(arg decision_maker) -r $(arg robot_controller) --robot $(arg robot) --world_frame $(arg world_frame) 
+        --z_offset $(arg z_offset) --language $(arg language) --reduced_action_space $(arg reduced_action_space)
+        --wait_time $(arg wait_time) --wait_deviation $(arg wait_deviation)"
+        />
+
+    <node name="live_explainer" pkg="engage" type="live_explainer.py" output="screen"
+        args="-i $(arg rgb_img) -d $(arg decision_maker) --buffer_time $(arg explain_image_buffer) --explainer $(arg explainer) --groups $(arg groups)"
+        />
+</launch>

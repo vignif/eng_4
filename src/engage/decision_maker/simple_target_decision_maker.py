@@ -12,6 +12,7 @@ class SimpleTargetDecisionMaker(DecisionMaker):
         self.wait_time = rospy.Duration(wait_time)
 
         self.last_decision_time = None
+        self.max_pec = self.discrete_score(1)
 
     '''
     DECISION
@@ -42,7 +43,8 @@ class SimpleTargetDecisionMaker(DecisionMaker):
             print("MGs: ",state.mutual_gazes)
             '''
 
-            scores = {k: self.discrete_score(v) for k, v in state.engagement_values.items() if v is not None}
+            #scores = {k: self.discrete_score(v) for k, v in state.engagement_values.items() if v is not None}
+            scores = self.calculate_scores(state)
             best_people = [kv[0] for kv in scores.items() if kv[1] == max(scores.values())]
             if len(best_people) == 0:
                 action = action = HeuristicDecisionMSG.NOTHING
@@ -61,6 +63,23 @@ class SimpleTargetDecisionMaker(DecisionMaker):
             '''
 
         return HeuristicDecision(action,target)
+    
+    def calculate_scores(self,state:EngageState):
+        scores = {}
+        for body in state.bodies:
+            ev = state.engagement_values[body]
+            if ev is None:
+                scores[body] = -9999999
+                continue
+            dev = self.discrete_score(ev)
+            pec = state.pose_confidences[body]
+            if pec is None:
+                scores[body] = 0
+                continue
+            dpec = self.discrete_score(pec)/self.max_pec
+            scores[body] = dpec*dev
+        return scores
+                
     
     def discrete_score(self,score):
         # NOTE: This is here so that discretisation in the explanations doesn't lead to weird results

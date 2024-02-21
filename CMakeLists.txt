@@ -197,6 +197,11 @@ catkin_install_python(PROGRAMS
 )
 
 catkin_install_python(PROGRAMS
+  scripts/prediction_experiment_manager.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+catkin_install_python(PROGRAMS
   scripts/viewer.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

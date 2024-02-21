@@ -94,6 +94,8 @@ class LiveExplainer:
             img = self.draw_labels(img,positions,names)
             self.save_image(img)
 
+            print(self.var_nums)
+
             # Set up explainer
             self.explainer.setup_explanation(dec,query=None,decision_maker=self.decision_maker,names=names)
 
@@ -165,7 +167,6 @@ class LiveExplainer:
     def publish_explainability_test(self,et_test,image):
         ros_img = self.cv_bridge.cv2_to_compressed_imgmsg(image)
         message = et_test.to_message(ros_img)
-        print(message)
         self.et_pub.publish(message)
 
 
@@ -188,7 +189,7 @@ if __name__ == "__main__":
                         type=str, default="counterfactual")
     parser.add_argument("--groups", help="Which groups to include. all = [0,1,2]. control = [0]. nocf = [1]. full = [2]. nomid = [0,2].",
                         type=str, default="all")
-    args = parser.parse_args()
+    args = parser.parse_args(rospy.myargv()[1:])
 
     if args.groups == "all":
         groups = [0,1,2]
