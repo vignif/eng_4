@@ -60,6 +60,7 @@ add_message_files(
   Group.msg
   HeuristicDecision.msg
   HeuristicStateDecision.msg
+  PeoplePositions.msg
   PoseArrayUncertain.msg
   RobotDecision.msg
   RobotStateDecision.msg
@@ -85,6 +86,7 @@ generate_messages(
   geometry_msgs
   std_msgs
   trajectory_msgs
+  hri_msgs
 )
 
 ################################################

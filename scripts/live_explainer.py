@@ -53,6 +53,10 @@ class LiveExplainer:
         self.image_buffer = []
         self.image_times = []
 
+        # Pose buffer
+        self.pose_buffer = []
+        self.pose_times = []
+
         # Explainability Test
         self.var_nums = self.explainer.obs_type.variable_counter()
         self.groups = groups

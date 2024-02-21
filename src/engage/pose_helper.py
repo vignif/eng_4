@@ -9,16 +9,37 @@ from opendr.engine.target import Pose
 
 from engage.utils import RandomID,VectorHelper
 from engage.marker_visualisation import MarkerMaker
-from engage.msg import PoseArrayUncertain
+from engage.msg import PoseArrayUncertain,PeoplePositions
 
 from hri_msgs.msg import Skeleton2D, NormalizedPointOfInterest2D, IdsList
 from sensor_msgs.msg import JointState
 from image_geometry import PinholeCameraModel
 from visualization_msgs.msg import Marker 
-from geometry_msgs.msg import Vector3Stamped,TwistStamped,TransformStamped
+from geometry_msgs.msg import Vector3Stamped,TwistStamped,TransformStamped,Point
 from geometry_msgs.msg import Pose as GPose
 
 class HRIPoseBody:
+
+    position_preference = [
+        "nose",
+        "l_ear",
+        "r_ear",
+        "l_eye",
+        "r_eye",
+        "neck",
+        "l_sho",
+        "r_sho",
+        "l_hip",
+        "r_hip",
+        "l_elb",
+        "r_elb",
+        "l_wri",
+        "r_wri",
+        "l_knee",
+        "r_knee",
+        "l_ank",
+        "r_ank",
+    ]
 
     joints = {
         "nose":0,
@@ -76,6 +97,7 @@ class HRIPoseBody:
         for i in range(Pose.num_kpts):
             self.pose_history.append([])
         self.num_poses = 0
+        self.position = Point()
 
         # Orientation
         self.body_normal = None
@@ -205,6 +227,24 @@ class HRIPoseBody:
         
         # Update transformation
         self.face_trans = trans
+
+    def get_position(self):
+        for kp in self.position_preference:
+            point = self.pose_3D[self.joints[kp]]
+            if point is not None:
+                self.position.x = point[0]
+                self.position.y = point[1]
+                self.position.z = point[2]
+                # Correct for ARI's weirdness
+                if self.camera_frame == "sellion_link" and self.world_frame == "base_link":
+                    self.position.x = abs(self.position.x)
+                    self.position.y = -self.position.y
+                return self.position,self.skeleton.skeleton[self.joints[kp]]
+        # No position
+        self.position.x = 0
+        self.position.y = 0
+        self.position.z = 0
+        return self.position,self.skeleton.skeleton[0]
 
 
     '''
@@ -506,6 +546,7 @@ class HRIPoseManager:
 
         # Publishers
         self.body_pub = rospy.Publisher("/humans/bodies/tracked",IdsList,queue_size=1)
+        self.position_pub = rospy.Publisher("/humans/bodies/positions",PeoplePositions,queue_size=1)
 
         # Initial Camera Projection
         trans = [0,0,0]
@@ -555,6 +596,15 @@ class HRIPoseManager:
         tracked.header.stamp = time
         self.body_pub.publish(tracked)
 
+    def publish_positions(self,time):
+        pp = PeoplePositions()
+        pp.header.stamp = time
+        pp.bodies = [id for id in self.bodies]
+        pose_skel = [self.bodies[body].get_position() for body in self.bodies]
+        pp.positions = [p[0] for p in pose_skel]
+        pp.points2d = [p[1] for p in pose_skel]
+        self.position_pub.publish(pp)
+
     def process_poses(self,poses,time,rgb_image,depth_image):
         bodies_in_pose = []
         curr_transform = self.inversed_transform.copy()
@@ -597,6 +647,9 @@ class HRIPoseManager:
         # Now publish the bodies
         for body in self.bodies:
             self.bodies[body].publish()
+
+        # No publish the positions of each person
+        self.publish_positions(time)
 
         # Now publish the transforms
         self.broadcast_transforms()
