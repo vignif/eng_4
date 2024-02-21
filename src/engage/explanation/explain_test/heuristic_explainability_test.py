@@ -8,9 +8,10 @@ class HeuristicExplainabilityTest(EngageStateExplainabilityTest):
                  group, 
                  var_nums, 
                  ignore_uninteresting=True,
+                 names=None,
                  restricted_actions=[HeuristicDecisionMSG.ELICIT_GENERAL,HeuristicDecisionMSG.ELICIT_TARGET]
                  ) -> None:
-        super().__init__(explanations, group, var_nums, ignore_uninteresting,restricted_actions)
+        super().__init__(explanations, group, var_nums, ignore_uninteresting,names,restricted_actions)
 
         # Heuristic stuff
         self.answer_actions = self.answer_components["Actions"]

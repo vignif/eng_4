@@ -2,7 +2,7 @@ import rospy
 import argparse
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
-import copy
+import string
 
 from sensor_msgs.msg import Image
 
@@ -10,6 +10,7 @@ from engage.decision_maker.decision_manager import DecisionManager
 from engage.explanation.hri_explainer import HRIExplainer
 from engage.explanation.heuristic_lime_explainer import HeuristicLimeExplainer
 from explanation_msgs.msg import Explainability
+from engage.msg import PeoplePositions
 
 class LiveExplainer:
     explainers = {
@@ -40,6 +41,7 @@ class LiveExplainer:
 
         # Subscribers
         rgb_img_sub = rospy.Subscriber(rgb_image_topic,Image,callback=self.update_image_buffer)
+        position_sub = rospy.Subscriber("/humans/bodies/positions",PeoplePositions,callback=self.update_position_buffer)
         dec_sub = rospy.Subscriber(
             "/hri_engage/decision_states",
             DecisionManager.decision_state_msgs[decision_maker],
@@ -70,41 +72,99 @@ class LiveExplainer:
             self.image_buffer = self.image_buffer[-self.buffer_length:]
             self.image_times = self.image_times[-self.buffer_length:]
 
+    def update_position_buffer(self,positions:PeoplePositions):
+        self.pose_buffer.append(positions)
+        self.pose_times.append(positions.header.stamp)
+
+        if len(self.pose_buffer)>self.buffer_length:
+            self.pose_buffer = self.pose_buffer[-self.buffer_length:]
+            self.pose_times = self.pose_times[-self.buffer_length:]
+
     def decision_state_callback(self,dec):
         dec_time = dec.header.stamp
 
         if self.dm.decision.interesting_decision(dec.decision):
             # Only handle decisions that are interesting, not e.g. NOTHING or WAITING
-            try:
-                dec_index = self.image_times.index(dec_time)
-            except ValueError:
-                print("No image found at time: ",dec_time)
-                return None
-            
-            dec_img = self.image_buffer[dec_index]
+            dec_img,positions = self.get_decision_context(dec_time)
+            # Get people name mapping
+            names = self.get_name_mapping(positions)
+
+            # Process image, add labels
+            img = self.ros_img_to_cv2(dec_img)
+            img = self.draw_labels(img,positions,names)
+            self.save_image(img)
 
             # Set up explainer
-            self.explainer.setup_explanation(dec,query=None,decision_maker=self.decision_maker)
+            self.explainer.setup_explanation(dec,query=None,decision_maker=self.decision_maker,names=names)
 
             # Explain
             #self.explainer.explain()
             explainability_test = self.explainer.generate_explainability_test(self.groups[self.curr_group_index],self.var_nums)
-            self.publish_explainability_test(explainability_test,dec_img)
+            self.publish_explainability_test(explainability_test,img)
 
             # Update group
             self.curr_group_index = (self.curr_group_index + 1) % len(self.groups)
 
-    def save_image(self,img):
+    def get_decision_context(self,time):
         try:
-            cv2_img = self.cv_bridge.imgmsg_to_cv2(img, "bgr8")
+            dec_index = self.image_times.index(time)
+        except ValueError:
+            print("No image found at time: ",time)
+            return None,None
+        dec_img = self.image_buffer[dec_index]
+        try:
+            pose_index = self.pose_times.index(time)
+        except ValueError:
+            print("No poses found at time: ",time)
+            if time>self.pose_times[-1]:
+                pose_index = -1
+            else:
+                return dec_img,None
+        positions = self.pose_buffer[pose_index]
+        return dec_img,positions
+    
+    def ros_img_to_cv2(self,ros_img):
+        try:
+            return self.cv_bridge.imgmsg_to_cv2(ros_img, "bgr8")
         except CvBridgeError:
             raise CvBridgeError
-        else:
-            # Save your OpenCV2 image as a jpeg 
-            cv2.imwrite('/home/tamlin/engage/latest_decision.jpeg', cv2_img)
+
+
+    def draw_labels(self,img,positions,names):
+        if img is None or positions is None:
+            return img
+            
+        for i in range(len(positions.bodies)):
+            if positions.points2d[i].x == -1 or positions.points2d[i].y == -1:
+                continue
+            name = names[positions.bodies[i]]
+            org = (int(img.shape[1]*positions.points2d[i].x),int(img.shape[0]*positions.points2d[i].y))
+            img = cv2.putText(img, name, org, cv2.FONT_HERSHEY_SIMPLEX ,  1, (0,0,255), 2, cv2.LINE_AA)
+        return img
+
+    def save_image(self,img):
+        cv2.imwrite('/home/tamlin/engage/latest_decision.jpeg', img)
+
+    def get_name_mapping(self,positions):
+        if positions is None:
+            return None
+        
+        x_poses = {}
+        for i in range(len(positions.bodies)):
+            x_poses[positions.bodies[i]] = positions.points2d[i].x
+        body_order = sorted(x_poses, key=x_poses.get)
+        
+        names = {}
+        for i in range(len(body_order)):
+            names[body_order[i]] = "Person {}".format(string.ascii_uppercase[i])
+
+        return names
+        
+            
 
     def publish_explainability_test(self,et_test,image):
-        message = et_test.to_message(image)
+        ros_img = self.cv_bridge.cv2_to_compressed_imgmsg(image)
+        message = et_test.to_message(ros_img)
         print(message)
         self.et_pub.publish(message)
 

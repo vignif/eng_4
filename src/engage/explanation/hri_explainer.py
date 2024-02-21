@@ -15,7 +15,7 @@ class HRIExplainer:
     def __init__(self,decision_maker):
         self.decision_maker = decision_maker
 
-    def setup_explanation(self,decision_state_msg,query=None,decision_maker="heuristic"):
+    def setup_explanation(self,decision_state_msg,query=None,decision_maker="heuristic",names=None):
         self.state,self.bodies = EngageState.single_state_from_msg(decision_state_msg)
         self.discrete_state = EngageState.discretise(self.state,self.bodies)
         self.true_observation = EngageStateObservation(self.discrete_state,self.bodies)
@@ -25,6 +25,7 @@ class HRIExplainer:
             self.query = DecisionManager.decision_queries[decision_maker]()
         self.true_outcome = DecisionManager.decision_outcomes[decision_maker](decision_state_msg.decision)
         self.explainability_test = DecisionManager.decision_explainability_tests[decision_maker]
+        self.names = names
 
         return self.validate_query()
 
@@ -54,7 +55,7 @@ class HRIExplainer:
         cfx = CounterfactualExplainer(self.true_observation,self.true_outcome,HeuristicCounterfactual,self.decision_maker,HeuristicExplanation)
         explanations = cfx.explain(self.query,max_depth)
         
-        return self.explainability_test(explanations,group,var_nums,ignore_uninteresting=ignore_uninteresting)
+        return self.explainability_test(explanations,group,var_nums,ignore_uninteresting=ignore_uninteresting,names=self.names)
 
     def explain(self,display=True,max_depth=2):
         self.display = display

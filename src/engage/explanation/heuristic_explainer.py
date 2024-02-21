@@ -129,6 +129,7 @@ class HeuristicExplanation(Explanation):
         self.query = query
         self.counterfactual = counterfactual
         self.bodies = self.get_bodies()
+        self.names = {}
         super().__init__()
 
     def get_bodies(self):
@@ -662,10 +663,18 @@ class HeuristicExplanation(Explanation):
         return text
 
     def person_name(self,target_name):
-        # TODO: Map targets to better, more readable names
-        if target_name == "NEWPERSON":
-            return "Bob"
-        return target_name
+        if target_name in self.names:
+            return self.names[target_name]
+        else:
+            return target_name
+    
+    def update_names(self,names):
+        if names is None:
+            self.names = {"NEWPERSON":"Bob"}
+        else:
+            self.names = copy.deepcopy(names)
+            self.names["NEWPERSON"] = "Bob"
+
     
     '''
     FOLLOW UP

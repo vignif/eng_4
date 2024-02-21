@@ -170,8 +170,8 @@ class HRIPoseBody:
 
         self.skeleton.skeleton = [
             NormalizedPointOfInterest2D(
-                kpt[0] / depth_image.shape[1],
-                kpt[1] / depth_image.shape[0],
+                kpt[0] / rgb_image.shape[1],
+                kpt[1] / rgb_image.shape[0],
                 self.pose.confidence
             ) 
             if (kpt[0] != -1 and kpt[1] != -1) else None for kpt in self.pose.data
@@ -239,12 +239,24 @@ class HRIPoseBody:
                 if self.camera_frame == "sellion_link" and self.world_frame == "base_link":
                     self.position.x = abs(self.position.x)
                     self.position.y = -self.position.y
-                return self.position,self.skeleton.skeleton[self.joints[kp]]
+                skeleton = self.skeleton.skeleton[self.joints[kp]]
+                if skeleton is None:
+                    skeleton = NormalizedPointOfInterest2D()
+                    skeleton.x = -1
+                    skeleton.y = -1
+                    skeleton.c = 0
+                return self.position,skeleton
         # No position
         self.position.x = 0
         self.position.y = 0
         self.position.z = 0
-        return self.position,self.skeleton.skeleton[0]
+        skeleton = self.skeleton.skeleton[0]
+        if skeleton is None:
+            skeleton = NormalizedPointOfInterest2D()
+            skeleton.x = -1
+            skeleton.y = -1
+            skeleton.c = 0
+        return self.position,skeleton
 
 
     '''
@@ -603,6 +615,7 @@ class HRIPoseManager:
         pose_skel = [self.bodies[body].get_position() for body in self.bodies]
         pp.positions = [p[0] for p in pose_skel]
         pp.points2d = [p[1] for p in pose_skel]
+        print(pp)
         self.position_pub.publish(pp)
 
     def process_poses(self,poses,time,rgb_image,depth_image):
@@ -641,15 +654,15 @@ class HRIPoseManager:
                 self.bodies[body].close()
                 del self.bodies[body]
 
+        # Now publish the positions of each person
+        self.publish_positions(time)
+
         # Now publish the updated body list
         self.publish_bodies(time)
 
         # Now publish the bodies
         for body in self.bodies:
             self.bodies[body].publish()
-
-        # No publish the positions of each person
-        self.publish_positions(time)
 
         # Now publish the transforms
         self.broadcast_transforms()
