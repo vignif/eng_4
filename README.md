@@ -138,3 +138,17 @@ If decisions are executed using one of the controller scripts written for the Pa
 **This feature is still under construction and prone to breaking**
 
 `rosrun engage viewer.py`
+
+## Live Explanations
+
+If you want the robot to explain its decisions in realtime as they occurr, you can use the [/live_explainer](/scripts/live_explainer.py) node.
+
+***Subscribed Topics***
+
+- /camera/color/image_raw (could be different, see arguments), sensor_msgs/Image - the topic of the RGB image stream
+- /humans/bodies/positions, engage/PeoplePositions - the names and positions of people, used for labelling
+- /hri_engage/decision_states, engage/... (different message depending on decision-maker, see Decision-making above) - the state used to make the decision
+
+***Published Topics***
+- /explanation_test/explanation, explanation_msgs/Explainability - the text explanations, follow-up questions, etc. (see [here](https://github.com/aandriella/explainaibility_app))
+
