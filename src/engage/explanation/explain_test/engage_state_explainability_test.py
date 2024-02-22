@@ -17,7 +17,7 @@ class EngageStateExplainabilityTest(ExplainabilityTest):
         # Pick an appropriate explanation based on the variable
         exp_vars = [(i,exp.variables[0]) for i,exp in zip(range(len(explanations)),explanations) if self.valid_variable(exp.variables[0],ignore_uninteresting)]
         exp_counts = np.array([var_nums[exp_var[1].split("_")[1]] for exp_var in exp_vars])
-        if exp_counts == []:
+        if exp_counts.size == 0:
             raise Exception("No explanations that relate to people")
         min_exps = np.where(exp_counts == exp_counts.min())[0]
         picked_index = np.random.choice(min_exps)

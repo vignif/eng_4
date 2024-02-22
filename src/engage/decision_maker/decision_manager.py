@@ -7,7 +7,7 @@ from engage.decision_maker.simple_target_ari_controller import SimpleTargetARICo
 from engage.explanation.heuristic_explainer import HeuristicOutcome,HeuristicQuery
 from engage.explanation.explain_test.heuristic_explainability_test import HeuristicExplainabilityTest
 
-from engage.msg import HeuristicStateDecision,RobotStateDecision
+from engage.msg import HeuristicStateDecision,RobotStateDecision,DecisionState
 
 
 class DecisionManager:
@@ -21,6 +21,12 @@ class DecisionManager:
         "heuristic":HeuristicStateDecision,
         "random_robot":RobotStateDecision,
         "simple_target":HeuristicStateDecision,
+    }
+
+    state_msgs = {
+        "heuristic":DecisionState,
+        "random_robot":DecisionState,
+        "simple_target":DecisionState,
     }
 
     robot_controllers = {

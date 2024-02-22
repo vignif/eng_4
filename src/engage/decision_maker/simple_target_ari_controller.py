@@ -43,7 +43,7 @@ class SimpleTargetARIController(RobotController):
         self.tts_publisher = rospy.Publisher("/tts/goal",TtsActionGoal,queue_size=1)
         self.eye_publisher = rospy.Publisher("/robot_face/expression",Expression,queue_size=1)
 
-        self.alive_motions = ["alive_{}".format(i) for i in range(1,8)]
+        self.alive_motions = ["alive_{}".format(i) for i in [1,2,5,6]]
 
     def execute_command(self,decision:HeuristicDecision,state:EngageState,bodies=None):
         if decision.action == HeuristicDecisionMSG.NOTHING:
@@ -121,7 +121,7 @@ class SimpleTargetARIController(RobotController):
 
         # Gesture
         motion_msg = PlayMotionActionGoal()
-        motion_msg.goal.motion_name = np.random.choice(["look_around"]+self.alive_motions)
+        motion_msg.goal.motion_name = np.random.choice(self.alive_motions)
         self.motion_action_publisher.publish(motion_msg)
 
         # Speech

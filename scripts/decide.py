@@ -15,6 +15,7 @@ from engage.decision_maker.simple_ari_controller import SimpleARIController
 from engage.decision_maker.simple_target_ari_controller import SimpleTargetARIController
 from engage.decision_maker.engage_state import EngageState
 from engage.decision_maker.decision_manager import DecisionManager
+from engage.srv import ToggleInteraction,ToggleInteractionResponse,ToggleInteractionRequest
 
 class DecisionBody:
     def __init__(self,id):
@@ -110,6 +111,9 @@ class DecisionNode:
         self.decision_publisher = self.dm.decision.create_publisher(topic="/hri_engage/decisions",queue_size=1)
         self.decision_state_publisher = EngageState.create_publisher(self.decision_state_msg,topic="hri_engage/decision_states",queue_size=1)
 
+        # Service
+        toggle_service = rospy.Service('toggle_interaction', ToggleInteraction, self.toggle_interaction)
+
         # Managing bodies
         self.body_time = None
         self.dec_time = None
@@ -124,6 +128,11 @@ class DecisionNode:
     '''
     CALLBACKS
     '''
+    def toggle_interaction(self,tog):
+        self.lock = not tog.interacting
+        print("Lock set to {}".format(self.lock))
+        return ToggleInteractionResponse(True)
+
     def manage_bodies(self,tracked_msg):
         if self.lock:
             return

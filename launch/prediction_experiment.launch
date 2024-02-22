@@ -28,6 +28,9 @@
     <arg name="explain_image_buffer" default="5"/>
     <arg name="explainer" default="counterfactual"/>
     <arg name="groups" default="all"/>
+
+    <arg name="decision_threshold" default="1"/>
+    <arg name="timeout_duration" default="10"/>
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
     <param name="logbag" type="str" value="$(find engage)"/>
@@ -63,7 +66,11 @@
         --wait_time $(arg wait_time) --wait_deviation $(arg wait_deviation)"
         />
 
-    <node name="live_explainer" pkg="engage" type="live_explainer.py" output="screen"
+    <node name="live_explainer" pkg="engage" type="live_explainer.py"
         args="-i $(arg rgb_img) -d $(arg decision_maker) --buffer_time $(arg explain_image_buffer) --explainer $(arg explainer) --groups $(arg groups)"
+        />
+
+    <node name="prediction_experiment_manager" pkg="engage" type="prediction_experiment_manager.py" output="screen"
+        args="-d $(arg decision_maker) -dt $(arg decision_threshold) --timeout_duration $(arg timeout_duration)"
         />
 </launch>
