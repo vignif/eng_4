@@ -10,15 +10,18 @@ class EngageStateExplainabilityTest(ExplainabilityTest):
         Group 2 - explanation and counterfactual
         '''
         self.group = group
+        self.no_explanations = False
 
         if len(explanations) == 0:
-            raise Exception("No explanations")
+            self.no_explanations = True
+            return
         
         # Pick an appropriate explanation based on the variable
         exp_vars = [(i,exp.variables[0]) for i,exp in zip(range(len(explanations)),explanations) if self.valid_variable(exp.variables[0],ignore_uninteresting)]
         exp_counts = np.array([var_nums[exp_var[1].split("_")[1]] for exp_var in exp_vars])
         if exp_counts.size == 0:
-            raise Exception("No explanations that relate to people")
+            self.no_explanations = True
+            return
         min_exps = np.where(exp_counts == exp_counts.min())[0]
         picked_index = np.random.choice(min_exps)
 

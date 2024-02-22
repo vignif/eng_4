@@ -102,10 +102,11 @@ class LiveExplainer:
             # Explain
             #self.explainer.explain()
             explainability_test = self.explainer.generate_explainability_test(self.groups[self.curr_group_index],self.var_nums)
-            self.publish_explainability_test(explainability_test,img)
+            if not explainability_test.no_explanations:
+                self.publish_explainability_test(explainability_test,img)
 
-            # Update group
-            self.curr_group_index = (self.curr_group_index + 1) % len(self.groups)
+                # Update group
+                self.curr_group_index = (self.curr_group_index + 1) % len(self.groups)
 
     def get_decision_context(self,time):
         try:

@@ -13,9 +13,10 @@ class HeuristicExplainabilityTest(EngageStateExplainabilityTest):
                  ) -> None:
         super().__init__(explanations, group, var_nums, ignore_uninteresting,names,restricted_actions)
 
-        # Heuristic stuff
-        self.answer_actions = self.answer_components["Actions"]
-        self.answer_targets = self.answer_components["Targets"]
+        if not self.no_explanations:
+            # Heuristic stuff
+            self.answer_actions = self.answer_components["Actions"]
+            self.answer_targets = self.answer_components["Targets"]
 
     def to_message(self,image):
         msg = Explainability()
