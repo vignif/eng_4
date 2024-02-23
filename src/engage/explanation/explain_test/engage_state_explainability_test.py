@@ -3,7 +3,7 @@ import numpy as np
 from engage.explanation.explain_test.explainability_test import ExplainabilityTest
 
 class EngageStateExplainabilityTest(ExplainabilityTest):
-    def __init__(self,explanations,group,var_nums,ignore_uninteresting=True,names=None,restricted_actions=None) -> None:
+    def __init__(self,explanations,group,var_nums,ignore_uninteresting=True,names=None,language="english",restricted_actions=None) -> None:
         '''
         Group 0 - control
         Group 1 - explanation but not counterfactial
@@ -27,6 +27,7 @@ class EngageStateExplainabilityTest(ExplainabilityTest):
 
         self.explanation = explanations[exp_vars[picked_index][0]]
         self.explanation.update_names(names)
+        self.explanation.set_language(language)
 
         # Update var num dict for future explanations
         exp_split = exp_vars[picked_index][1].split("_")
@@ -37,7 +38,7 @@ class EngageStateExplainabilityTest(ExplainabilityTest):
         # Generate explanation texts
         self.exp_counterfactual = ""
         if group == 0:
-            self.exp_reason = self.explanation.true_action_text() + "."
+            self.exp_reason = self.explanation.true_action_text()
         elif group == 1:
             self.exp_reason,_ = self.explanation.present_explanation()
         elif group == 2:

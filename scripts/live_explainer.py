@@ -24,10 +24,12 @@ class LiveExplainer:
                  groups = [0,1,2],
                  buffer_time=5,
                  explainer="counterfactual",
+                 language="english",
                  rate=20) -> None:
         self.rate = rospy.Rate(rate)
         self.decision_maker = decision_maker
         self.buffer_length = rate*buffer_time
+        self.language = language
 
         # Decision-Maker
         # TODO: The parameters of the decision maker should match the real ones ... how?
@@ -49,7 +51,7 @@ class LiveExplainer:
             )
         
         # Publishers
-        self.et_pub = rospy.Publisher("/explanation_test/explanation",Explainability,queue_size=1)
+        self.et_pub = rospy.Publisher("/input_explanation",Explainability,queue_size=1)
         
         # Image buffer
         self.image_buffer = []
@@ -94,14 +96,12 @@ class LiveExplainer:
             img = self.draw_labels(img,positions,names)
             self.save_image(img)
 
-            print(self.var_nums)
-
             # Set up explainer
             self.explainer.setup_explanation(dec,query=None,decision_maker=self.decision_maker,names=names)
 
             # Explain
             #self.explainer.explain()
-            explainability_test = self.explainer.generate_explainability_test(self.groups[self.curr_group_index],self.var_nums)
+            explainability_test = self.explainer.generate_explainability_test(self.groups[self.curr_group_index],self.var_nums,language=self.language)
             if not explainability_test.no_explanations:
                 self.publish_explainability_test(explainability_test,img)
 
@@ -159,7 +159,13 @@ class LiveExplainer:
         
         names = {}
         for i in range(len(body_order)):
-            names[body_order[i]] = "Person {}".format(string.ascii_uppercase[i])
+            if self.language.lower() in ["english","en_gb"]:
+                person_marker = "Person"
+            elif self.language.lower() in ["catalan","ca_es"]:
+                person_marker = "Persona"
+            else:
+                raise Exception("Langauge {} not recognised".format(self.language))
+            names[body_order[i]] = "{} {}".format(person_marker,string.ascii_uppercase[i])
 
         return names
         
@@ -168,6 +174,7 @@ class LiveExplainer:
     def publish_explainability_test(self,et_test,image):
         ros_img = self.cv_bridge.cv2_to_compressed_imgmsg(image)
         message = et_test.to_message(ros_img)
+        print(message)
         self.et_pub.publish(message)
 
 
@@ -190,6 +197,8 @@ if __name__ == "__main__":
                         type=str, default="counterfactual")
     parser.add_argument("--groups", help="Which groups to include. all = [0,1,2]. control = [0]. nocf = [1]. full = [2]. nomid = [0,2].",
                         type=str, default="all")
+    parser.add_argument("--language", help="Language of the robot, can be 'english' or 'catalan'",
+                        type=str, default="english")
     args = parser.parse_args(rospy.myargv()[1:])
 
     if args.groups == "all":
@@ -211,5 +220,6 @@ if __name__ == "__main__":
         buffer_time=args.buffer_time,
         explainer=args.explainer,
         groups=groups,
+        language=args.language,
     )
     explainer.run()

@@ -47,7 +47,7 @@
         />
 
     <node pkg="rosbag" type="record" name="results_record"
-        args="-O $(arg bag_dir)/prediction_experiment/$(arg exp).bag --split --duration=$(arg rosbag_duration)m /hri_engage/decision_states /explanation_test/explanation"
+        args="-O $(arg bag_dir)/prediction_experiment/$(arg exp).bag --split --duration=$(arg rosbag_duration)m /hri_engage/decision_states /input_explanation /out_explanation"
         />
 
     <node name="pose" pkg="engage" type="pose.py"
@@ -67,10 +67,12 @@
         />
 
     <node name="live_explainer" pkg="engage" type="live_explainer.py"
-        args="-i $(arg rgb_img) -d $(arg decision_maker) --buffer_time $(arg explain_image_buffer) --explainer $(arg explainer) --groups $(arg groups)"
+        args="-i $(arg rgb_img) -d $(arg decision_maker) --buffer_time $(arg explain_image_buffer) 
+        --explainer $(arg explainer) --groups $(arg groups)"
         />
 
     <node name="prediction_experiment_manager" pkg="engage" type="prediction_experiment_manager.py" output="screen"
-        args="-d $(arg decision_maker) -dt $(arg decision_threshold) --timeout_duration $(arg timeout_duration)"
+        args="-d $(arg decision_maker) -dt $(arg decision_threshold) --timeout_duration $(arg timeout_duration)
+        -r $(arg robot_controller)"
         />
 </launch>

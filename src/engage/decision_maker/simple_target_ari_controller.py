@@ -138,3 +138,10 @@ class SimpleTargetARIController(RobotController):
         gaze.point.z = 0
         self.gaze_action_publisher.publish(gaze)
 
+    def execute_start_tablet_behaviour(self):
+        # Gaze ahead
+        self.reset_gaze()
+        # Eyes
+        expression = Expression()
+        expression.expression = "excited"
+        self.eye_publisher.publish(expression)

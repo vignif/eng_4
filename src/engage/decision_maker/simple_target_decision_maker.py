@@ -24,6 +24,29 @@ class SimpleTargetDecisionMaker(DecisionMaker):
         if decision.action != HeuristicDecisionMSG.NOTHING and decision.action != HeuristicDecisionMSG.WAIT:
             self.last_decision_time = time
 
+    def decide_simple(self,state,score_threshold=0.1):
+        target = None
+        action = None
+
+        if state.waiting:
+            action = HeuristicDecisionMSG.WAIT
+        elif len(state.bodies) == 0:
+            # Nobody to interact with
+            action = HeuristicDecisionMSG.NOTHING
+        else:
+            scores = self.simple_scores(state)
+            best_people = [kv[0] for kv in scores.items() if kv[1] == max(scores.values())]
+            if len(best_people) == 0:
+                action = action = HeuristicDecisionMSG.NOTHING
+            else:
+                potential_target = sorted(best_people)[0]
+                if scores[potential_target] <= score_threshold:
+                    action = HeuristicDecisionMSG.ELICIT_GENERAL
+                else:
+                    action = HeuristicDecisionMSG.ELICIT_TARGET
+                    target = potential_target
+        return HeuristicDecision(action,target)
+
     def decide(self,state:EngageState,discretise=True):
         target = None
         action = None
@@ -63,6 +86,14 @@ class SimpleTargetDecisionMaker(DecisionMaker):
             '''
 
         return HeuristicDecision(action,target)
+    
+    def simple_scores(self,state):
+        scores = {}
+        for body in state.bodies:
+            ev = state.engagement_values[body]
+            pec = state.pose_confidences[body]
+            scores[body] = ev*pec
+        return scores
     
     def calculate_scores(self,state:EngageState):
         scores = {}

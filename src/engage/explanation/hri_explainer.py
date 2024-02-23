@@ -45,7 +45,7 @@ class HRIExplainer:
 
         return text_explanation is None,text_explanation
     
-    def generate_explainability_test(self,group,var_nums,ignore_uninteresting=True,max_depth=2):
+    def generate_explainability_test(self,group,var_nums,ignore_uninteresting=True,max_depth=2,language="english"):
         '''
         Group 0 - control
         Group 1 - explanation but not counterfactial
@@ -55,7 +55,7 @@ class HRIExplainer:
         cfx = CounterfactualExplainer(self.true_observation,self.true_outcome,HeuristicCounterfactual,self.decision_maker,HeuristicExplanation)
         explanations = cfx.explain(self.query,max_depth)
         
-        return self.explainability_test(explanations,group,var_nums,ignore_uninteresting=ignore_uninteresting,names=self.names)
+        return self.explainability_test(explanations,group,var_nums,ignore_uninteresting=ignore_uninteresting,names=self.names,language=language)
 
     def explain(self,display=True,max_depth=2):
         self.display = display

@@ -11,7 +11,10 @@ class PredictionExperimentManager:
                  decision_maker="heuristic",
                  timeout_duration=10,
                  decision_threshold=1,
-                 rate=20):
+                 robot_controller="heuristic_ari_controller",
+                 world_frame="base_link",
+                 rate=20,
+                 **kwargs):
         self.rate = rospy.Rate(rate)
         self.dt = decision_threshold
         self.timeout_duration = timeout_duration
@@ -27,6 +30,9 @@ class PredictionExperimentManager:
 
         # Timer
         self.timeout_timer = None
+
+        # Robot controller
+        self.robot_controller = self.robot_controller = DecisionManager.robot_controllers[robot_controller](world_frame=world_frame,**kwargs)
 
     def process_decision_state(self,dec_state):
         if self.state == "ELICIT":
@@ -51,6 +57,8 @@ class PredictionExperimentManager:
                 self.state = new_state
             except:
                 print("Failed to toggle interaction")
+            else:
+                self.robot_controller.execute_start_tablet_behaviour()
         elif old_state == "TEST" and new_state == "ELICIT":
             rospy.wait_for_service('toggle_interaction')
             try:
@@ -84,11 +92,23 @@ if __name__ == "__main__":
                         type=float, default=1)
     parser.add_argument("-t", "--timeout_duration", help="Length of inactivity time before timeout",
                         type=float, default=10)
+    parser.add_argument("-r", "--robot_controller", help="Which robot controller will be used",
+                        type=str, default="heuristic_ari_controller")
+    parser.add_argument("--language", help="Language of the robot, can be 'english' or 'catalan'",
+                        type=str, default="english")
+    parser.add_argument("--world_frame", help="World frame",
+                        type=str, default="map")
+    parser.add_argument("--z_offset", help="Offset to z axis when gazing to account for difference between eye and camera positions",
+                        type=float, default=0.3)
     args = parser.parse_args(rospy.myargv()[1:])
 
     explainer = PredictionExperimentManager(
         decision_maker=args.decision_maker,
         decision_threshold=args.decision_threshold,
         timeout_duration=args.timeout_duration,
+        robot_controller=args.robot_controller,
+        language=args.language,
+        world_frame=args.world_frame,
+        z_offset=args.z_offset,
     )
     explainer.run()
