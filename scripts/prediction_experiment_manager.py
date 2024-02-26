@@ -39,8 +39,9 @@ class PredictionExperimentManager:
             if DecisionManager.state_msgs[self.dm_name] == DecisionState:
                 # Dealing with the engage state
                 distances = dec_state.state.distances
+                print(distances)
                 for dist in distances:
-                    if dist < self.dt:
+                    if dist < self.dt and dist != 0: # != 0 because sometimes depth will fail
                         # Change state
                         self.change_state("TEST")
                         break
@@ -74,6 +75,7 @@ class PredictionExperimentManager:
 
     def timeout(self,timer):
         # Timeout triggered, go back to interacting
+        print("Timeout")
         self.change_state("ELICIT")
 
 

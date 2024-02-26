@@ -6,17 +6,17 @@ class HeuristicTextCatalan(HeuristicText):
 
     def outcome_text_conditional(self,outcome,person_name):
         if outcome.action == self.dmsg.NOTHING:
-            text = "Jo no hauria fet res"
+            text = "jo no hauria fet res"
         elif outcome.action == self.dmsg.WAIT:
-            text = "Jo hauria acabat el que estava fent"
+            text = "jo hauria acabat el que estava fent"
         elif outcome.action == self.dmsg.MAINTAIN:
             raise ValueError
         elif outcome.action == self.dmsg.RECAPTURE:
             raise ValueError
         elif outcome.action == self.dmsg.ELICIT_GENERAL:
-            text = "Jo hauria intentat que algú parlés amb mi"
+            text = "jo hauria intentat que algú parlés amb mi"
         elif outcome.action == self.dmsg.ELICIT_TARGET:
-            text = "Jo hauria intentat que {} parlés amb mi".format(person_name(outcome.target))
+            text = "jo hauria intentat que {} parlés amb mi".format(person_name(outcome.target))
         else:
             raise ValueError
         
@@ -24,17 +24,17 @@ class HeuristicTextCatalan(HeuristicText):
     
     def outcome_text_past(self,outcome,person_name):
         if outcome.action == self.dmsg.NOTHING:
-            text = "No he fet res"
+            text = "No he fet res."
         elif outcome.action == self.dmsg.WAIT:
-            text = "Jo estava esperant per acabar el que estava fent"
+            text = "Jo estava esperant per acabar el que estava fent."
         elif outcome.action == self.dmsg.MAINTAIN:
             raise ValueError
         elif outcome.action == self.dmsg.RECAPTURE:
             raise ValueError
         elif outcome.action == self.dmsg.ELICIT_GENERAL:
-            text = "He intentat que algú parlés amb mi"
+            text = "He intentat que algú parlés amb mi."
         elif outcome.action == self.dmsg.ELICIT_TARGET:
-            text = "He intentat parlar amb {}".format(person_name(outcome.target))
+            text = "He intentat parlar amb {}.".format(person_name(outcome.target))
         else:
             raise ValueError
         
@@ -396,12 +396,12 @@ class HeuristicTextCatalan(HeuristicText):
             elif var_name == "Distance":
                 if len(sorted_vals) == 1:
                     approx_val = round(sorted_vals[0],2)
-                    val_settings.append("Si {} estigués a uns {} metres de mi.".format(subject,approx_val))
+                    val_settings.append("Si {} estigués a uns {} metres de mi".format(subject,approx_val))
                 else:
                     if min_val:
-                        val_settings.append("Si {} estigués a menys de {} metres de mi.".format(subject,approx_max))
+                        val_settings.append("Si {} estigués a menys de {} metres de mi".format(subject,approx_max))
                     elif max_val:
-                        val_settings.append("Si {} estigués a més de {} metres de mi.".format(subject,approx_min))
+                        val_settings.append("Si {} estigués a més de {} metres de mi".format(subject,approx_min))
                     else:
                         val_settings.append("Si {} estigués entre {} i {} metres de mi".format(subject,approx_min,approx_max))
 
@@ -419,20 +419,176 @@ class HeuristicTextCatalan(HeuristicText):
             return foil_text[:-4]
         
     def statement_text_conditional(self,var_cat,var_name,value,subject,true_observation):
-        raise NotImplementedError
+        if true_observation.variable_categories[var_name] == "Categorical":
+            if var_name == "Group":
+                raise NotImplementedError
+            elif var_name == "Motion":
+                raise NotImplementedError
+            elif var_name == "Engagement Level":
+                raise NotImplementedError
+            elif var_name == "Group with Robot":
+                raise NotImplementedError
+            elif var_name == "Waiting":
+                if value:
+                    return "si jo estigués fent una altra cosa"
+                else:
+                    return "si jo no estigués fent res més"
+        else:
+            if var_name in ["Group Confidence","Motion Confidence","Engagement Level Confidence","Pose Estimation Confidence"]:
+                approx_val = round(value,2)
+
+                negation = ""
+                magnitude = ""
+    
+                if approx_val == 0.00:
+                    magnitude = "molt in"
+                elif approx_val == 0.33:
+                    negation = "no "
+                elif approx_val == 0.66:
+                    pass
+                else:
+                    magnitude = "molt "
+
+                # Variable type
+                if var_name == "Group Confidence":
+                    raise ValueError
+                elif var_name == "Motion Confidence":
+                    raise ValueError
+                elif var_name == "Engagement Level Confidence":
+                    raise ValueError
+                elif var_name == "Pose Estimation Confidence":
+                    var_string = "de la meva detecció de l'esquelet de {}".format(subject)
+
+
+                text = "si jo {}estigués {}segura".format(negation,magnitude)
+                return "{} {}".format(text,var_string)
+            
+            elif var_name == "Mutual Gaze":
+                approx_val = round(value,2)
+                if approx_val == 0.00:
+                    return "si {} no em mirés gens".format(subject)
+                elif approx_val == 0.33:
+                    return "si {} no em mirés".format(subject)
+                elif approx_val == 0.67:
+                    return "si {} em mirés una mica".format(subject)
+                elif approx_val == 1.00:
+                    return "si {} i jo ens miréssim directament".format(subject)
+            elif var_name == "Engagement Value":
+                approx_val = round(value,2)
+                if approx_val == 0.00:
+                    return "si {} no estigués gens interessat en mi".format(subject)
+                elif approx_val == 0.33:
+                    return "si {} no estigués interessat en mi".format(subject)
+                elif approx_val == 0.67:
+                    return "si {} estigués interessat en mi".format(subject)
+                elif approx_val == 1.00:
+                    return "si {} estigués molt interessat en mi".format(subject)
+            elif var_name == "Distance":
+                approx_val = round(value,2)
+                return "si {} estigués a uns {} metres de mi".format(subject,approx_val)
+            
+        # Shouldn't get here
+        raise Exception(var_cat,var_name,value)
         
     def statement_text_past(self,var_cat,var_name,value,subject,true_observation):
-        raise NotImplementedError
+        if true_observation.variable_categories[var_name] == "Categorical":
+            if var_name == "Group":
+                raise NotImplementedError
+            elif var_name == "Motion":
+                raise NotImplementedError
+            elif var_name == "Engagement Level":
+                raise NotImplementedError
+            elif var_name == "Group with Robot":
+                raise NotImplementedError
+            elif var_name == "Waiting":
+                if value:
+                    return "estava fent una altra cosa"
+                else:
+                    return "no estava fent res més"
+        else:
+            if var_name in ["Group Confidence","Motion Confidence","Engagement Level Confidence","Pose Estimation Confidence"]:
+                approx_val = round(value,2)
+
+                negation = ""
+                magnitude = ""
+    
+                if approx_val == 0.00:
+                    magnitude = "molt in"
+                elif approx_val == 0.33:
+                    negation = "no "
+                elif approx_val == 0.66:
+                    pass
+                else:
+                    magnitude = "molt "
+
+                # Variable type
+                if var_name == "Group Confidence":
+                    raise ValueError
+                elif var_name == "Motion Confidence":
+                    raise ValueError
+                elif var_name == "Engagement Level Confidence":
+                    raise ValueError
+                elif var_name == "Pose Estimation Confidence":
+                    var_string = "de la meva detecció de l'esquelet de {}".format(subject)
+
+
+                text = "{}estava {}segura".format(negation,magnitude)
+                return "{} {}".format(text,var_string)
+            
+            elif var_name == "Mutual Gaze":
+                approx_val = round(value,2)
+                if approx_val == 0.00:
+                    return "{} no em mirava gens".format(subject)
+                elif approx_val == 0.33:
+                    return "{} no em mirava".format(subject)
+                elif approx_val == 0.67:
+                    return "{} em mirava una mica".format(subject)
+                elif approx_val == 1.00:
+                    return "{} i jo ens miràvem directament".format(subject)
+            elif var_name == "Engagement Value":
+                approx_val = round(value,2)
+                if approx_val == 0.00:
+                    return "{} no estava gens interessat en mi".format(subject)
+                elif approx_val == 0.33:
+                    return "{} no estava interessat en mi".format(subject)
+                elif approx_val == 0.67:
+                    return "{} estava interessat en mi".format(subject)
+                elif approx_val == 1.00:
+                    return "{} estava molt interessat en mi".format(subject)
+            elif var_name == "Distance":
+                approx_val = round(value,2)
+                return "{} estava a uns {} metres de mi".format(subject,approx_val)
+            
+        # Shouldn't get here
+        raise Exception(var_cat,var_name,value)
     
     def question_context(self,context_statement):
-        raise NotImplementedError
+        return "Quan prenguí la decisió, {}.".format(context_statement)
     
     def question_text(self,question_statement):
-        raise NotImplementedError
+        return "Què creus que faria {}?".format(question_statement)
+    
     
     def question_context_imaginary_person_absolute(self,var_name,new_person):
-        raise NotImplementedError
+        context_text = "Imagineu-vos que hi hagués una persona, Bob, que "
+
+        if var_name != "Mutual Gaze":
+            if new_person["Mutual Gaze"] == 0:
+                mg_text = "no em mirés gens"
+            elif new_person["Mutual Gaze"] == 0.33:
+                mg_text = "no em mirés"
+            elif new_person["Mutual Gaze"] == 0.67:
+                mg_text = "em mirés una mica"
+            elif new_person["Mutual Gaze"] == 1:
+                mg_text = "em mirés directament"
+
+        if var_name == "Mutual Gaze":
+            context_text += "estigués {} metres de mi.".format(new_person["Distance"])
+        elif var_name == "Distance":
+            context_text += "{}.".format(mg_text)
+        else:
+            context_text += "estigués {} metres de mi i {}.".format(new_person["Distance"],mg_text)
+        return context_text
     
     def question_text_imaginary_person_absolute(self,var_name,value,true_observation,person_name):
-
-        raise NotImplementedError
+        return "Què creus que faria {}?".format(self.statement_text_conditional("NEWPERSON",var_name,value,person_name("NEWPERSON"),true_observation))

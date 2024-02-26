@@ -100,10 +100,10 @@ class LiveExplainer:
             self.explainer.setup_explanation(dec,query=None,decision_maker=self.decision_maker,names=names)
 
             # Explain
-            #self.explainer.explain()
             explainability_test = self.explainer.generate_explainability_test(self.groups[self.curr_group_index],self.var_nums,language=self.language)
             if not explainability_test.no_explanations:
                 self.publish_explainability_test(explainability_test,img)
+                self.save_explainability_test(explainability_test)
 
                 # Update group
                 self.curr_group_index = (self.curr_group_index + 1) % len(self.groups)
@@ -148,6 +148,34 @@ class LiveExplainer:
     def save_image(self,img):
         cv2.imwrite('/home/tamlin/engage/latest_decision.jpeg', img)
 
+    def save_explainability_test(self,explainability_test):
+        f = open("/home/tamlin/engage/explanations.txt", "a")
+        # Group
+        g_text = "Group: {}\n".format(explainability_test.group)
+        f.write(g_text)
+        # Explanation
+        e_text = "Explanation Reason: {}\n".format(explainability_test.exp_reason)
+        f.write(e_text)
+        if explainability_test.group == 2:
+            c_text = "Explanation Counterfactual: {}\n".format(explainability_test.exp_counterfactual)
+            f.write(c_text)
+        
+        # Question
+        q_context = "Question Context: {}\n".format(explainability_test.question_context)
+        f.write(q_context)
+        q_text = "Question: {}\n".format(explainability_test.question_text)
+        f.write(q_text)
+
+        # Answers
+        answers = "Answers: "
+        for answer,i in zip(explainability_test.answer_texts,["a","b","c"]):
+            answers += "({}) {}; ".format(i,answer)
+        f.write(answers[:-2]+"\n")
+
+        f.write("-------------------------------------------------------------------------\n")
+
+        f.close()
+
     def get_name_mapping(self,positions):
         if positions is None:
             return None
@@ -174,7 +202,6 @@ class LiveExplainer:
     def publish_explainability_test(self,et_test,image):
         ros_img = self.cv_bridge.cv2_to_compressed_imgmsg(image)
         message = et_test.to_message(ros_img)
-        print(message)
         self.et_pub.publish(message)
 
 

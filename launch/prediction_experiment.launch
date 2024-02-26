@@ -68,7 +68,7 @@
 
     <node name="live_explainer" pkg="engage" type="live_explainer.py"
         args="-i $(arg rgb_img) -d $(arg decision_maker) --buffer_time $(arg explain_image_buffer) 
-        --explainer $(arg explainer) --groups $(arg groups)"
+        --explainer $(arg explainer) --groups $(arg groups) --language $(arg language)"
         />
 
     <node name="prediction_experiment_manager" pkg="engage" type="prediction_experiment_manager.py" output="screen"
