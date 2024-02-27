@@ -20,11 +20,13 @@ class LiveExplainer:
 
     def __init__(self,
                  rgb_image_topic,
+                 pose_image_topic,
                  decision_maker,
                  groups = [0,1,2],
                  buffer_time=5,
                  explainer="counterfactual",
                  language="english",
+                 use_pose=False,
                  rate=20) -> None:
         self.rate = rospy.Rate(rate)
         self.decision_maker = decision_maker
@@ -42,16 +44,22 @@ class LiveExplainer:
         self.cv_bridge = CvBridge()
 
         # Subscribers
-        rgb_img_sub = rospy.Subscriber(rgb_image_topic,Image,callback=self.update_image_buffer)
+        if use_pose:
+            image_topic = pose_image_topic
+        else:
+            image_topic = rgb_image_topic
+
+        img_sub = rospy.Subscriber(image_topic,Image,callback=self.update_image_buffer)
         position_sub = rospy.Subscriber("/humans/bodies/positions",PeoplePositions,callback=self.update_position_buffer)
         dec_sub = rospy.Subscriber(
             "/hri_engage/decision_states",
             DecisionManager.decision_state_msgs[decision_maker],
             callback=self.decision_state_callback
             )
+        results_sub = rospy.Subscriber("/out_explanation",Explainability,callback=self.update_test_conditions)
         
         # Publishers
-        self.et_pub = rospy.Publisher("/input_explanation",Explainability,queue_size=1)
+        self.et_pub = rospy.Publisher("/input_explanation",Explainability,queue_size=10)
         
         # Image buffer
         self.image_buffer = []
@@ -102,11 +110,21 @@ class LiveExplainer:
             # Explain
             explainability_test = self.explainer.generate_explainability_test(self.groups[self.curr_group_index],self.var_nums,language=self.language)
             if not explainability_test.no_explanations:
+                print("Explanation found")
                 self.publish_explainability_test(explainability_test,img)
-                self.save_explainability_test(explainability_test)
+                #self.save_explainability_test(explainability_test)
 
-                # Update group
-                self.curr_group_index = (self.curr_group_index + 1) % len(self.groups)
+               
+            else:
+                print("No explanations found")
+                print(dec)
+
+    def update_test_conditions(self,result_msg):
+        # Update group
+        self.curr_group_index = (self.curr_group_index + 1) % len(self.groups)
+
+        # Update var nums
+        self.var_nums[result_msg.explanation_variable] += 1
 
     def get_decision_context(self,time):
         try:
@@ -216,6 +234,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Explain interactions live")
     parser.add_argument("-i", "--rgb_image_topic", help="Topic for rgb image",
                         type=str, default="/{}/color/image_raw".format(default_camera))
+    parser.add_argument("-p", "--pose_image_topic", help="Topic for annotated pose image",
+                        type=str, default="/opendr/pose_img")
     parser.add_argument("-d", "--decision_maker", help="Which decision maker will be used",
                         type=str, default="heuristic")
     parser.add_argument("--buffer_time", help="How long the node will store images for",
@@ -226,6 +246,8 @@ if __name__ == "__main__":
                         type=str, default="all")
     parser.add_argument("--language", help="Language of the robot, can be 'english' or 'catalan'",
                         type=str, default="english")
+    parser.add_argument("--image_mode", help="Whether the image used is rgb or annotated pose",
+                        type=str, default="rgb")
     args = parser.parse_args(rospy.myargv()[1:])
 
     if args.groups == "all":
@@ -240,13 +262,19 @@ if __name__ == "__main__":
         groups = [0,2]
     else:
         raise Exception(args.groups)
+    
+    use_pose = False
+    if args.image_mode == "pose":
+        use_pose = True
 
     explainer = LiveExplainer(
         args.rgb_image_topic,
+        args.pose_image_topic,
         args.decision_maker,
         buffer_time=args.buffer_time,
         explainer=args.explainer,
         groups=groups,
         language=args.language,
+        use_pose=use_pose,
     )
     explainer.run()

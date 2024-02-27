@@ -6,37 +6,45 @@ class HeuristicTextCatalan(HeuristicText):
 
     def outcome_text_conditional(self,outcome,person_name):
         if outcome.action == self.dmsg.NOTHING:
-            text = "jo no hauria fet res"
+            text = "no hauria fet res"
         elif outcome.action == self.dmsg.WAIT:
-            text = "jo hauria acabat el que estava fent"
+            text = "hauria acabat el que estava fent"
         elif outcome.action == self.dmsg.MAINTAIN:
             raise ValueError
         elif outcome.action == self.dmsg.RECAPTURE:
             raise ValueError
         elif outcome.action == self.dmsg.ELICIT_GENERAL:
-            text = "jo hauria intentat que algú parlés amb mi"
+            text = "hauria intentat que algú em parlés"
         elif outcome.action == self.dmsg.ELICIT_TARGET:
-            text = "jo hauria intentat que {} parlés amb mi".format(person_name(outcome.target))
+            text = "hauria intentat que {} em parlés".format(self.person_name(outcome.target,person_name))
         else:
             raise ValueError
         
         return text
     
-    def outcome_text_past(self,outcome,person_name):
+    def outcome_text_past(self,outcome,person_name,capitalize=True):
+        includes_name = False
         if outcome.action == self.dmsg.NOTHING:
-            text = "No he fet res."
+            text = "no he fet res."
         elif outcome.action == self.dmsg.WAIT:
-            text = "Jo estava esperant per acabar el que estava fent."
+            text = "estava esperant per acabar el que estava fent."
         elif outcome.action == self.dmsg.MAINTAIN:
             raise ValueError
         elif outcome.action == self.dmsg.RECAPTURE:
             raise ValueError
         elif outcome.action == self.dmsg.ELICIT_GENERAL:
-            text = "He intentat que algú parlés amb mi."
+            text = "he intentat que algú em parlés."
         elif outcome.action == self.dmsg.ELICIT_TARGET:
-            text = "He intentat parlar amb {}.".format(person_name(outcome.target))
+            includes_name = True
+            text = "he intentat parlar amb "
+            if capitalize:
+                text = text.capitalize()
+            text += "{}.".format(self.person_name(outcome.target,person_name))
         else:
             raise ValueError
+        
+        if not includes_name:
+            return text.capitalize()
         
         return text
     
@@ -50,9 +58,9 @@ class HeuristicTextCatalan(HeuristicText):
         elif outcome.action == self.dmsg.RECAPTURE:
             raise ValueError
         elif outcome.action == self.dmsg.ELICIT_GENERAL:
-            text = "Intentaré que algú parli amb mi"
+            text = "Intentaré que algú em parli"
         elif outcome.action == self.dmsg.ELICIT_TARGET:
-            text = "Intentaré parlar amb {}".format(person_name(outcome.target))
+            text = "Intentaré parlar amb {}".format(self.person_name(outcome.target,person_name))
         else:
             raise ValueError
         
@@ -96,7 +104,7 @@ class HeuristicTextCatalan(HeuristicText):
             var_string = "de la meva detecció de l'esquelet de {}".format(subject)
 
 
-        text = "{}estava {}segura".format(negation,magnitude).capitalize()
+        text = "{}estava {}segura".format(negation,magnitude)
         return "{} {}".format(text,var_string)
     
     def confidence_counterfactual_texts(self,var,var_name,var_cats,values,subject,min_val,max_val):
@@ -214,7 +222,7 @@ class HeuristicTextCatalan(HeuristicText):
             elif var_name == "Mutual Gaze":
                 if threshold is None:
                     if approx_val == 0.00:
-                        return "{} no em mirava gens.".format(subject)
+                        return "{} mirava lluny de mi.".format(subject)
                     elif approx_val == 0.33:
                         return "{} no em mirava.".format(subject)
                     elif approx_val == 0.67:
@@ -225,7 +233,7 @@ class HeuristicTextCatalan(HeuristicText):
                     if thresh_min:
                         # True value is lower than a threshold
                         if approx_thresh == 0.33:
-                            return "{} no em mirava gens.".format(subject)
+                            return "{} mirava lluny de mi.".format(subject)
                         elif approx_thresh == 0.67:
                             return "{} no em mirava.".format(subject)
                         elif approx_thresh == 1.00:
@@ -267,17 +275,20 @@ class HeuristicTextCatalan(HeuristicText):
                             return "{} estava una mica interessat en mi.".format(subject)
             elif var_name == "Distance":
                 if threshold is None:
-                    return "{} estava a uns {} metres de mi.".format(subject,approx_val)
+                    num = "uns"
+                    if approx_val == 1:
+                        num = "un"
+                    return "{} estava a {} {}m de mi.".format(subject,num,approx_val)
                 else:
                     if thresh_min:
                         # True value is lower than a threshold
-                        return "{} estava a menys de {} metres de mi.".format(subject,approx_thresh)
+                        return "{} estava a menys de {}m de mi.".format(subject,approx_thresh)
                     else:
                         # True value is higher than a threshold
-                        return "{} estava a més de {} metres de mi.".format(subject,approx_thresh)
+                        return "{} estava a més de {}m de mi.".format(subject,approx_thresh)
                     
     def construct_reason_text(self,true_outcome,var,var_name,var_cats,subject,explanation_values,true_val,true_observation,person_name):
-        return self.outcome_text_past(true_outcome,person_name)[:-1] + " perquè " + self.reason_text(var,var_name,var_cats,subject,explanation_values,true_val,true_observation)
+        return self.outcome_text_past(true_outcome,person_name)[:-1] + " perquè " + self.reason_text(var,var_name,var_cats,self.person_name(subject,person_name),explanation_values,true_val,true_observation) + "."
     
     def construct_counterfactual_text(self,foil_text,counterfactual_decision_text):
         return " {}, {}.".format(foil_text,counterfactual_decision_text)
@@ -321,7 +332,7 @@ class HeuristicTextCatalan(HeuristicText):
                     approx_val = round(sorted_vals[0],2)
 
                     if approx_val == 0.00:
-                        val_settings.append("Si {} no em mirés gens".format(subject))
+                        val_settings.append("Si {} mirés lluny de mi".format(subject))
                     elif approx_val == 0.33:
                         val_settings.append("Si {} no em mirés".format(subject))
                     elif approx_val == 0.67:
@@ -396,14 +407,17 @@ class HeuristicTextCatalan(HeuristicText):
             elif var_name == "Distance":
                 if len(sorted_vals) == 1:
                     approx_val = round(sorted_vals[0],2)
-                    val_settings.append("Si {} estigués a uns {} metres de mi".format(subject,approx_val))
+                    num = "uns"
+                    if approx_val == 1:
+                        num = "un"
+                    val_settings.append("Si {} estigués a {} {}m de mi".format(subject,num,approx_val))
                 else:
                     if min_val:
-                        val_settings.append("Si {} estigués a menys de {} metres de mi".format(subject,approx_max))
+                        val_settings.append("Si {} estigués a menys de {}m de mi".format(subject,approx_max))
                     elif max_val:
-                        val_settings.append("Si {} estigués a més de {} metres de mi".format(subject,approx_min))
+                        val_settings.append("Si {} estigués a més de {}m de mi".format(subject,approx_min))
                     else:
-                        val_settings.append("Si {} estigués entre {} i {} metres de mi".format(subject,approx_min,approx_max))
+                        val_settings.append("Si {} estigués entre {}m i {}m de mi".format(subject,approx_min,approx_max))
 
             
 
@@ -430,9 +444,9 @@ class HeuristicTextCatalan(HeuristicText):
                 raise NotImplementedError
             elif var_name == "Waiting":
                 if value:
-                    return "si jo estigués fent una altra cosa"
+                    return "si estigués fent una altra cosa"
                 else:
-                    return "si jo no estigués fent res més"
+                    return "si no estigués fent res més"
         else:
             if var_name in ["Group Confidence","Motion Confidence","Engagement Level Confidence","Pose Estimation Confidence"]:
                 approx_val = round(value,2)
@@ -460,13 +474,13 @@ class HeuristicTextCatalan(HeuristicText):
                     var_string = "de la meva detecció de l'esquelet de {}".format(subject)
 
 
-                text = "si jo {}estigués {}segura".format(negation,magnitude)
+                text = "si {}estigués {}segura".format(negation,magnitude)
                 return "{} {}".format(text,var_string)
             
             elif var_name == "Mutual Gaze":
                 approx_val = round(value,2)
                 if approx_val == 0.00:
-                    return "si {} no em mirés gens".format(subject)
+                    return "si {} mirés lluny de mi".format(subject)
                 elif approx_val == 0.33:
                     return "si {} no em mirés".format(subject)
                 elif approx_val == 0.67:
@@ -485,7 +499,10 @@ class HeuristicTextCatalan(HeuristicText):
                     return "si {} estigués molt interessat en mi".format(subject)
             elif var_name == "Distance":
                 approx_val = round(value,2)
-                return "si {} estigués a uns {} metres de mi".format(subject,approx_val)
+                num = "uns"
+                if approx_val == 1:
+                    num = "un"
+                return "si {} estigués a {} {}m de mi".format(subject,num,approx_val)
             
         # Shouldn't get here
         raise Exception(var_cat,var_name,value)
@@ -538,7 +555,7 @@ class HeuristicTextCatalan(HeuristicText):
             elif var_name == "Mutual Gaze":
                 approx_val = round(value,2)
                 if approx_val == 0.00:
-                    return "{} no em mirava gens".format(subject)
+                    return "{} mirava lluny de mi".format(subject)
                 elif approx_val == 0.33:
                     return "{} no em mirava".format(subject)
                 elif approx_val == 0.67:
@@ -557,7 +574,10 @@ class HeuristicTextCatalan(HeuristicText):
                     return "{} estava molt interessat en mi".format(subject)
             elif var_name == "Distance":
                 approx_val = round(value,2)
-                return "{} estava a uns {} metres de mi".format(subject,approx_val)
+                num = "uns"
+                if approx_val == 1:
+                    num = "un"
+                return "{} estava a {} {}m de mi".format(subject,num,approx_val)
             
         # Shouldn't get here
         raise Exception(var_cat,var_name,value)
@@ -569,12 +589,12 @@ class HeuristicTextCatalan(HeuristicText):
         return "Què creus que faria {}?".format(question_statement)
     
     
-    def question_context_imaginary_person_absolute(self,var_name,new_person):
-        context_text = "Imagineu-vos que hi hagués una persona, Bob, que "
+    def question_context_imaginary_person_absolute(self,var_name,new_person,person_name):
+        context_text = "Imagina't que hi hagués una persona, {}, que ".format(self.person_name("NEWPERSON",person_name))
 
         if var_name != "Mutual Gaze":
             if new_person["Mutual Gaze"] == 0:
-                mg_text = "no em mirés gens"
+                mg_text = "mirés lluny de mi"
             elif new_person["Mutual Gaze"] == 0.33:
                 mg_text = "no em mirés"
             elif new_person["Mutual Gaze"] == 0.67:
@@ -583,12 +603,18 @@ class HeuristicTextCatalan(HeuristicText):
                 mg_text = "em mirés directament"
 
         if var_name == "Mutual Gaze":
-            context_text += "estigués {} metres de mi.".format(new_person["Distance"])
+            context_text += "estigués a {}m de mi.".format(new_person["Distance"])
         elif var_name == "Distance":
             context_text += "{}.".format(mg_text)
         else:
-            context_text += "estigués {} metres de mi i {}.".format(new_person["Distance"],mg_text)
+            context_text += "estigués a {}m de mi i {}.".format(new_person["Distance"],mg_text)
         return context_text
     
     def question_text_imaginary_person_absolute(self,var_name,value,true_observation,person_name):
-        return "Què creus que faria {}?".format(self.statement_text_conditional("NEWPERSON",var_name,value,person_name("NEWPERSON"),true_observation))
+        return "Què creus que faria {}?".format(self.statement_text_conditional("NEWPERSON",var_name,value,self.person_name("NEWPERSON",person_name),true_observation))
+    
+    def person_name(self,name,name_func):
+        if name == "NEWPERSON":
+            return "en {}".format(name_func(name)) # TODO: This assumes NEWPERSON is masculine
+        else:
+            return "la {}".format(name_func(name)) # Assuming persona

@@ -33,7 +33,7 @@ class EngageStateExplainabilityTest(ExplainabilityTest):
         exp_split = exp_vars[picked_index][1].split("_")
         self.exp_var = exp_split[1]
         self.exp_target = exp_split[0] if exp_split[0] not in ["GENERAL","ROBOT"] else ""
-        var_nums[self.exp_var] += 1
+        #var_nums[self.exp_var] += 1
 
         # Generate explanation texts
         self.exp_counterfactual = ""

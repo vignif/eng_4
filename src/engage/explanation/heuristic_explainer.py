@@ -142,7 +142,7 @@ class HeuristicExplanation(Explanation):
         
     def present_explanation(self):
         var = self.variables[0]
-        subject =  self.person_name(self.var_cats[var])
+        subject =  self.var_cats[var]
         true_val = self.true_values[self.variables[0]]
         reason = self.text_generator.construct_reason_text(self.true_outcome,var,self.var_names[var],self.var_cats,subject,self.explanation_values,true_val,self.true_observation,self.person_name)
         counterfactual = self.counterfactual_explanation_component()
@@ -337,7 +337,7 @@ class HeuristicExplanation(Explanation):
         observation = EngageStateObservation(new_state,self.bodies+["NEWPERSON"])
         var_name = self.var_names[self.variables[0]]
         intervention_order = self.counterfactual.intervention_order+["NEWPERSON_{}".format(var_name)]
-        context_text = self.text_generator.question_context_imaginary_person_absolute(var_name,new_person)
+        context_text = self.text_generator.question_context_imaginary_person_absolute(var_name,new_person,self.person_name)
         
 
         question_texts = []

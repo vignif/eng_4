@@ -145,3 +145,24 @@ class SimpleTargetARIController(RobotController):
         expression = Expression()
         expression.expression = "excited"
         self.eye_publisher.publish(expression)
+
+    def execute_new_page_behaviour(self,page_name):
+        # Gaze ahead
+        self.reset_gaze()
+
+        if page_name == "welcome_page":
+            exp = "excited"
+        elif page_name == "consent_form_page":
+            exp = "neutral"
+        elif page_name == "played_before_page":
+            exp = "neutral"
+        elif page_name == "explanation_page":
+            exp = "neutral" 
+        elif page_name == "prediction_page":
+            exp = "confused" 
+        elif page_name == "end_page":
+            exp = "amazed"
+
+        expression = Expression()
+        expression.expression = exp
+        self.eye_publisher.publish(expression)

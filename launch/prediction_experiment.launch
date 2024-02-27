@@ -21,16 +21,19 @@
     <arg name="reduced_action_space" default="True"/>
     <arg name="record_cam" default="false"/>
     <arg name="language" default="english"/>
-    <arg name="rosbag_duration" default="2"/>
+    <arg name="rosbag_duration" default="5"/>
     <arg name="wait_time" default="5"/>
     <arg name="wait_deviation" default="1"/>
 
     <arg name="explain_image_buffer" default="5"/>
     <arg name="explainer" default="counterfactual"/>
     <arg name="groups" default="all"/>
+    <arg name="image_mode" default="rgb"/>
 
     <arg name="decision_threshold" default="1"/>
-    <arg name="timeout_duration" default="10"/>
+    <arg name="input_timeout_duration" default="45"/>
+    <arg name="start_timeout_duration" default="15"/>
+    
     
     <param name="exp_name" type="str" value="$(arg exp)"/>
     <param name="logbag" type="str" value="$(find engage)"/>
@@ -60,19 +63,19 @@
         --max_angle $(arg max_angle)"
         />
 
-    <node name="decision" pkg="engage" type="decide.py"
+    <node name="decision" pkg="engage" type="decide.py" output="screen"
         args="-d $(arg decision_maker) -r $(arg robot_controller) --robot $(arg robot) --world_frame $(arg world_frame) 
         --z_offset $(arg z_offset) --language $(arg language) --reduced_action_space $(arg reduced_action_space)
         --wait_time $(arg wait_time) --wait_deviation $(arg wait_deviation)"
         />
 
-    <node name="live_explainer" pkg="engage" type="live_explainer.py"
-        args="-i $(arg rgb_img) -d $(arg decision_maker) --buffer_time $(arg explain_image_buffer) 
-        --explainer $(arg explainer) --groups $(arg groups) --language $(arg language)"
+    <node name="live_explainer" pkg="engage" type="live_explainer.py" output="screen"
+        args="-i $(arg rgb_img) -p $(arg pos_img) -d $(arg decision_maker) --buffer_time $(arg explain_image_buffer) 
+        --explainer $(arg explainer) --groups $(arg groups) --language $(arg language) --image_mode $(arg image_mode)"
         />
 
     <node name="prediction_experiment_manager" pkg="engage" type="prediction_experiment_manager.py" output="screen"
-        args="-d $(arg decision_maker) -dt $(arg decision_threshold) --timeout_duration $(arg timeout_duration)
-        -r $(arg robot_controller)"
+        args="-d $(arg decision_maker) -dt $(arg decision_threshold) --input_timeout_duration $(arg input_timeout_duration)
+        --start_timeout_duration $(arg start_timeout_duration) -r $(arg robot_controller)"
         />
 </launch>

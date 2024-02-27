@@ -51,10 +51,15 @@ class SimpleTargetDecisionMaker(DecisionMaker):
         target = None
         action = None
 
+        new_bodies = []
+        for body in state.bodies:
+            if state.distances[body] is not None:
+                new_bodies.append(body)
+
         if state.waiting:
             # Waiting for an action to execute
             action = HeuristicDecisionMSG.WAIT
-        elif len(state.bodies) == 0:
+        elif len(new_bodies) == 0:
             # Nobody to interact with
             action = HeuristicDecisionMSG.NOTHING
         else:
@@ -67,7 +72,7 @@ class SimpleTargetDecisionMaker(DecisionMaker):
             '''
 
             #scores = {k: self.discrete_score(v) for k, v in state.engagement_values.items() if v is not None}
-            scores = self.calculate_scores(state)
+            scores = self.calculate_scores(state,new_bodies)
             best_people = [kv[0] for kv in scores.items() if kv[1] == max(scores.values())]
             if len(best_people) == 0:
                 action = action = HeuristicDecisionMSG.NOTHING
@@ -95,9 +100,9 @@ class SimpleTargetDecisionMaker(DecisionMaker):
             scores[body] = ev*pec
         return scores
     
-    def calculate_scores(self,state:EngageState):
+    def calculate_scores(self,state:EngageState,new_bodies):
         scores = {}
-        for body in state.bodies:
+        for body in new_bodies:
             ev = state.engagement_values[body]
             if ev is None:
                 scores[body] = -9999999
