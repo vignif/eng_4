@@ -107,7 +107,7 @@ class SimpleTargetDecisionMaker(DecisionMaker):
             if ev is None:
                 scores[body] = -9999999
                 continue
-            dev = self.discrete_score(ev)
+            dev = self.discrete_score(ev)/self.max_pec
             pec = state.pose_confidences[body]
             if pec is None:
                 scores[body] = 0

@@ -15,7 +15,7 @@ class EngageStateExplainabilityTest(ExplainabilityTest):
         if len(explanations) == 0:
             self.no_explanations = True
             return
-        
+                
         # Pick an appropriate explanation based on the variable
         exp_vars = [(i,exp.variables[0]) for i,exp in zip(range(len(explanations)),explanations) if self.valid_variable(exp.variables[0],ignore_uninteresting)]
         exp_counts = np.array([var_nums[exp_var[1].split("_")[1]] for exp_var in exp_vars])

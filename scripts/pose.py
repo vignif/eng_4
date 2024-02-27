@@ -55,6 +55,12 @@ class PoseEstimationNode:
 
         self.opendr_bridge = ROSBridge()
 
+        # Camera information for projections
+        self.rgb_info = None
+        self.depth_info = None
+        self.camera_frame = camera_frame
+        self.world_frame = world_frame
+
         # Pose Manager
         self.visualise = visualise
         self.pose_manager = HRIPoseManager(
@@ -91,12 +97,6 @@ class PoseEstimationNode:
 
         # Transform Listener
         self.listener = tf.TransformListener()
-
-        # Camera information for projections
-        self.rgb_info = None
-        self.depth_info = None
-        self.camera_frame = camera_frame
-        self.world_frame = world_frame
 
         # OpenCV Bridge
         self.cv_bridge = CvBridge()

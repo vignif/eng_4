@@ -317,15 +317,15 @@ class HeuristicExplanation(Explanation):
         # TODO: Change based on real people's distances
         new_person = {
             "Group":False,
-            "Group Confidence":1,
+            "Group Confidence":3,
             "Motion":MotionActivity.NOTHING,
-            "Motion Confidence":1,
+            "Motion Confidence":3,
             "Engagement Level":EngagementLevel.DISENGAGED,
-            "Engagement Level Confidence":1,
+            "Engagement Level Confidence":3,
             "Group with Robot":False,
-            "Mutual Gaze":1,
-            "Engagement Value":0.5,
-            "Pose Estimation Confidence":1,
+            "Mutual Gaze":3,
+            "Engagement Value":2,
+            "Pose Estimation Confidence":3,
             "Distance":2,
             "Waiting":False,
         }
@@ -344,7 +344,7 @@ class HeuristicExplanation(Explanation):
         outcomes = []
         for val in observation.variable_cardinalities[var_name]:
             cont_val = observation.real_value(var_name,val)
-            intervention = {"NEWPERSON":{var_name:cont_val}}
+            intervention = {"NEWPERSON":{var_name:val}}
             outcome = self.counterfactual.outcome(observation,intervention_order,intervention)
             outcomes.append(outcome)
             q_text = self.text_generator.question_text_imaginary_person_absolute(var_name,cont_val,self.true_observation,self.person_name)

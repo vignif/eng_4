@@ -189,9 +189,9 @@ class HeuristicTextCatalan(HeuristicText):
                 raise ValueError
             elif var_name == "Waiting":
                 if true_val:
-                    return "estava fent una altra cosa."
+                    return "estava fent una altra cosa"
                 else:
-                    return "no estava fent res més."
+                    return "no estava fent res més"
         else:
             # Continuous variables...much trickier
             approx_val = round(true_val,2)
@@ -222,70 +222,70 @@ class HeuristicTextCatalan(HeuristicText):
             elif var_name == "Mutual Gaze":
                 if threshold is None:
                     if approx_val == 0.00:
-                        return "{} mirava lluny de mi.".format(subject)
+                        return "{} mirava lluny de mi".format(subject)
                     elif approx_val == 0.33:
-                        return "{} no em mirava.".format(subject)
+                        return "{} no em mirava".format(subject)
                     elif approx_val == 0.67:
-                        return "{} em mirava una mica.".format(subject)
+                        return "{} em mirava una mica".format(subject)
                     elif approx_val == 1.00:
-                        return "{} i jo ens miràvem directament.".format(subject)
+                        return "{} i jo ens miràvem directament".format(subject)
                 else:
                     if thresh_min:
                         # True value is lower than a threshold
                         if approx_thresh == 0.33:
-                            return "{} mirava lluny de mi.".format(subject)
+                            return "{} mirava lluny de mi".format(subject)
                         elif approx_thresh == 0.67:
-                            return "{} no em mirava.".format(subject)
+                            return "{} no em mirava".format(subject)
                         elif approx_thresh == 1.00:
-                            return "{} i jo no ens miràvem directament.".format(subject)
+                            return "{} i jo no ens miràvem directament".format(subject)
                     else:
                         # True value is higher than a threshold
                         if approx_thresh == 0.67:
-                            return "{} i jo ens miràvem directament.".format(subject)
+                            return "{} i jo ens miràvem directament".format(subject)
                         elif approx_thresh == 0.33:
-                            return "{} em mirava.".format(subject)
+                            return "{} em mirava".format(subject)
                         elif approx_thresh == 0.00:
-                            return "{} no mirava lluny de mi.".format(subject) #TODO: This one too
+                            return "{} no mirava lluny de mi".format(subject) #TODO: This one too
             elif var_name == "Engagement Value":
                 if threshold is None:
                     if approx_val == 0.00:
-                        return "{} no estava gens interessat en mi.".format(subject)
+                        return "{} no estava gens interessat en mi".format(subject)
                     elif approx_val == 0.33:
-                        return "{} no estava interessat en mi.".format(subject)
+                        return "{} no estava interessat en mi".format(subject)
                     elif approx_val == 0.67:
-                        return "{} estava interessat en mi.".format(subject)
+                        return "{} estava interessat en mi".format(subject)
                     elif approx_val == 1.00:
-                        return "{} estava molt interessat en mi.".format(subject)
+                        return "{} estava molt interessat en mi".format(subject)
                 else:
                     if thresh_min:
                         # True value is lower than a threshold
                         if approx_thresh == 0.33:
-                            return "{} no estava gens interessat en mi.".format(subject)
+                            return "{} no estava gens interessat en mi".format(subject)
                         elif approx_thresh == 0.67:
-                            return "{} no estava interessat en mi.".format(subject)
+                            return "{} no estava interessat en mi".format(subject)
                         elif approx_thresh == 1.00:
-                            return "{} no estava molt interessat en mi.".format(subject)
+                            return "{} no estava molt interessat en mi".format(subject)
                     else:
                         # True value is higher than a threshold
                         if approx_thresh == 0.67:
-                            return "{} estava molt interessat en mi.".format(subject)
+                            return "{} estava molt interessat en mi".format(subject)
                         elif approx_thresh == 0.33:
-                            return "{} estava interessat en mi.".format(subject)
+                            return "{} estava interessat en mi".format(subject)
                         elif approx_thresh == 0.00:
-                            return "{} estava una mica interessat en mi.".format(subject)
+                            return "{} estava una mica interessat en mi".format(subject)
             elif var_name == "Distance":
                 if threshold is None:
                     num = "uns"
                     if approx_val == 1:
                         num = "un"
-                    return "{} estava a {} {}m de mi.".format(subject,num,approx_val)
+                    return "{} estava a {} {}m de mi".format(subject,num,approx_val)
                 else:
                     if thresh_min:
                         # True value is lower than a threshold
-                        return "{} estava a menys de {}m de mi.".format(subject,approx_thresh)
+                        return "{} estava a menys de {}m de mi".format(subject,approx_thresh)
                     else:
                         # True value is higher than a threshold
-                        return "{} estava a més de {}m de mi.".format(subject,approx_thresh)
+                        return "{} estava a més de {}m de mi".format(subject,approx_thresh)
                     
     def construct_reason_text(self,true_outcome,var,var_name,var_cats,subject,explanation_values,true_val,true_observation,person_name):
         return self.outcome_text_past(true_outcome,person_name)[:-1] + " perquè " + self.reason_text(var,var_name,var_cats,self.person_name(subject,person_name),explanation_values,true_val,true_observation) + "."
@@ -595,11 +595,11 @@ class HeuristicTextCatalan(HeuristicText):
         if var_name != "Mutual Gaze":
             if new_person["Mutual Gaze"] == 0:
                 mg_text = "mirés lluny de mi"
-            elif new_person["Mutual Gaze"] == 0.33:
-                mg_text = "no em mirés"
-            elif new_person["Mutual Gaze"] == 0.67:
-                mg_text = "em mirés una mica"
             elif new_person["Mutual Gaze"] == 1:
+                mg_text = "no em mirés"
+            elif new_person["Mutual Gaze"] == 2:
+                mg_text = "em mirés una mica"
+            elif new_person["Mutual Gaze"] == 3:
                 mg_text = "em mirés directament"
 
         if var_name == "Mutual Gaze":

@@ -45,6 +45,7 @@ class PredictionExperimentManager:
         self.robot_controller = self.robot_controller = DecisionManager.robot_controllers[robot_controller](world_frame=world_frame,**kwargs)
 
         # Welcome page
+        self.page = None
         self.navigate_page("welcome_page")
 
     def process_decision_state(self,dec_state):
@@ -87,6 +88,7 @@ class PredictionExperimentManager:
         print("State changed from {} to {}".format(old_state,self.state))
 
     def page_name_callback(self,page_name:String):
+        self.page = page_name.data
         self.robot_controller.execute_new_page_behaviour(page_name.data)
 
     def user_input_callback(self,user_input):
@@ -94,7 +96,11 @@ class PredictionExperimentManager:
         if self.state == "TEST":
             if self.timeout_timer is not None:
                 self.timeout_timer.shutdown()
-                self.timeout_timer = rospy.Timer(rospy.Duration(self.input_timeout_duration), self.timeout, oneshot=True)
+                if self.page in ["prediction_page","end_page"]:
+                    duration = self.start_timeout_duration
+                else:
+                    duration = self.input_timeout_duration
+                self.timeout_timer = rospy.Timer(rospy.Duration(duration), self.timeout, oneshot=True)
         elif self.state == "ELICIT":
             self.change_state("TEST")
 
@@ -108,6 +114,7 @@ class PredictionExperimentManager:
         go_to.type = WebGoTo.TOUCH_PAGE
         go_to.value = page_name
         self.page_pub.publish(go_to)
+        self.page = page_name
 
 
 
