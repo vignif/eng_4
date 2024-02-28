@@ -176,7 +176,7 @@ class HeuristicTextCatalan(HeuristicText):
             return "{} {}".format(situation,var_string)
         return "Si {}estigués {}segura {}".format(negation,magnitude,var_string)
     
-    def reason_text(self,var,var_name,var_cats,subject,explanation_values,true_val,true_observation):
+    def reason_text(self,var,var_name,var_cats,subject,explanation_values,true_val,true_observation,masculine=False):
         if true_observation.variable_categories[var_name] == "Categorical":
             # Categorical variables, pretty straightforward
             if var_name == "Group":
@@ -247,32 +247,37 @@ class HeuristicTextCatalan(HeuristicText):
                         elif approx_thresh == 0.00:
                             return "{} no mirava lluny de mi".format(subject) #TODO: This one too
             elif var_name == "Engagement Value":
+                if masculine:
+                    interested = "interessat"
+                else:
+                    interested = "interessada"
+
                 if threshold is None:
                     if approx_val == 0.00:
-                        return "{} no estava gens interessat en mi".format(subject)
+                        return "{} no estava gens {} en mi".format(subject,interested)
                     elif approx_val == 0.33:
-                        return "{} no estava interessat en mi".format(subject)
+                        return "{} no estava {} en mi".format(subject,interested)
                     elif approx_val == 0.67:
-                        return "{} estava interessat en mi".format(subject)
+                        return "{} estava {} en mi".format(subject,interested)
                     elif approx_val == 1.00:
-                        return "{} estava molt interessat en mi".format(subject)
+                        return "{} estava molt {} en mi".format(subject,interested)
                 else:
                     if thresh_min:
                         # True value is lower than a threshold
                         if approx_thresh == 0.33:
-                            return "{} no estava gens interessat en mi".format(subject)
+                            return "{} no estava gens {} en mi".format(subject,interested)
                         elif approx_thresh == 0.67:
-                            return "{} no estava interessat en mi".format(subject)
+                            return "{} no estava {} en mi".format(subject,interested)
                         elif approx_thresh == 1.00:
-                            return "{} no estava molt interessat en mi".format(subject)
+                            return "{} no estava molt {} en mi".format(subject,interested)
                     else:
                         # True value is higher than a threshold
                         if approx_thresh == 0.67:
-                            return "{} estava molt interessat en mi".format(subject)
+                            return "{} estava molt {} en mi".format(subject,interested)
                         elif approx_thresh == 0.33:
-                            return "{} estava interessat en mi".format(subject)
+                            return "{} estava {} en mi".format(subject,interested)
                         elif approx_thresh == 0.00:
-                            return "{} estava una mica interessat en mi".format(subject)
+                            return "{} estava una mica {} en mi".format(subject,interested)
             elif var_name == "Distance":
                 if threshold is None:
                     num = "uns"
@@ -293,7 +298,7 @@ class HeuristicTextCatalan(HeuristicText):
     def construct_counterfactual_text(self,foil_text,counterfactual_decision_text):
         return " {}, {}.".format(foil_text,counterfactual_decision_text)
     
-    def foil_text(self,var,var_name,var_cats,values,subject,true_values,true_observation,cards):
+    def foil_text(self,var,var_name,var_cats,values,subject,true_values,true_observation,cards,masculine=False):
         val_settings = []
         if true_observation.variable_categories[var_name] == "Categorical":
             if var_name == "Group":
@@ -369,41 +374,46 @@ class HeuristicTextCatalan(HeuristicText):
                             # This is the only valid combination unless another discretisation is introduced
                             val_settings.append("Si {} em mirés una mica però no directament".format(subject))
             elif var_name == "Engagement Value":
+                if masculine:
+                    interested = "interessat"
+                else:
+                    interested = "interessada"
+
                 if len(sorted_vals) == 1:
                     approx_val = round(sorted_vals[0],2)
 
                     if approx_val == 0.00:
-                        val_settings.append("Si {} no estigués gens interessat en mi".format(subject))
+                        val_settings.append("Si {} no estigués gens {} en mi".format(subject,interested))
                     elif approx_val == 0.33:
-                        val_settings.append("Si {} no estigués interessat en mi".format(subject))
+                        val_settings.append("Si {} no estigués {} en mi".format(subject,interested))
                     elif approx_val == 0.67:
-                        val_settings.append("Si {} estigués una mica interessat en mi".format(subject))
+                        val_settings.append("Si {} estigués una mica {} en mi".format(subject,interested))
                     elif approx_val == 1.00:
-                        val_settings.append("Si {} estigués molt interessat en mi".format(subject))
+                        val_settings.append("Si {} estigués molt {} en mi".format(subject,interested))
 
                 else:
                     if min_val:
                         # Only concerns the highest value
 
                         if approx_max == 0.33:
-                            val_settings.append("Si {} no estigués interessat en mi".format(subject))
+                            val_settings.append("Si {} no estigués {} en mi".format(subject,interested))
                         elif approx_max == 0.67:
-                            val_settings.append("Si {} no estigués molt interessat en mi".format(subject))
+                            val_settings.append("Si {} no estigués molt {} en mi".format(subject,interested))
                         elif approx_max == 1.00:
                             # Somewhere in between
-                            val_settings.append("Si {} estigués molt interessat en mi o si {} estigués molt desinteressat en mi".format(subject,subject))
+                            val_settings.append("Si {} estigués molt {} en mi o si {} estigués molt des{} en mi".format(subject,interested,subject,interested))
 
                     elif max_val:
                         # Only conerns the lowest value
 
                         if approx_min == 0.67:
-                            val_settings.append("Si {} estigués interessat en mi".format(subject))
+                            val_settings.append("Si {} estigués {} en mi".format(subject,interested))
                         elif approx_min == 0.33:
-                            val_settings.append("Si {} estigués una mica interessat en mi".format(subject))
+                            val_settings.append("Si {} estigués una mica {} en mi".format(subject,interested))
                     else:
                         if approx_min == 0.33 and approx_max == 0.67:
                             # This is the only valid combination unless another discretisation is introduced
-                            val_settings.append("Si {} no estigués molt interessat en mi i si {} no estigués molt desinteressat en mi".format(subject,subject))
+                            val_settings.append("Si {} no estigués molt {} en mi i si {} no estigués molt des{} en mi".format(subject,interested,subject,interested))
             elif var_name == "Distance":
                 if len(sorted_vals) == 1:
                     approx_val = round(sorted_vals[0],2)
@@ -432,7 +442,7 @@ class HeuristicTextCatalan(HeuristicText):
                 foil_text += val_set + ", o "
             return foil_text[:-4]
         
-    def statement_text_conditional(self,var_cat,var_name,value,subject,true_observation):
+    def statement_text_conditional(self,var_cat,var_name,value,subject,true_observation,masculine=False):
         if true_observation.variable_categories[var_name] == "Categorical":
             if var_name == "Group":
                 raise NotImplementedError
@@ -489,14 +499,19 @@ class HeuristicTextCatalan(HeuristicText):
                     return "si {} i jo ens miréssim directament".format(subject)
             elif var_name == "Engagement Value":
                 approx_val = round(value,2)
+                if masculine:
+                    interested = "interessat"
+                else:
+                    interested = "interessada"
+                
                 if approx_val == 0.00:
-                    return "si {} no estigués gens interessat en mi".format(subject)
+                    return "si {} no estigués gens {} en mi".format(subject,interested)
                 elif approx_val == 0.33:
-                    return "si {} no estigués interessat en mi".format(subject)
+                    return "si {} no estigués {} en mi".format(subject,interested)
                 elif approx_val == 0.67:
-                    return "si {} estigués interessat en mi".format(subject)
+                    return "si {} estigués {} en mi".format(subject,interested)
                 elif approx_val == 1.00:
-                    return "si {} estigués molt interessat en mi".format(subject)
+                    return "si {} estigués molt {} en mi".format(subject,interested)
             elif var_name == "Distance":
                 approx_val = round(value,2)
                 num = "uns"
@@ -507,7 +522,7 @@ class HeuristicTextCatalan(HeuristicText):
         # Shouldn't get here
         raise Exception(var_cat,var_name,value)
         
-    def statement_text_past(self,var_cat,var_name,value,subject,true_observation):
+    def statement_text_past(self,var_cat,var_name,value,subject,true_observation,masculine=False):
         if true_observation.variable_categories[var_name] == "Categorical":
             if var_name == "Group":
                 raise NotImplementedError
@@ -564,14 +579,20 @@ class HeuristicTextCatalan(HeuristicText):
                     return "{} i jo ens miràvem directament".format(subject)
             elif var_name == "Engagement Value":
                 approx_val = round(value,2)
+                if masculine:
+                    interested = "interessat"
+                else:
+                    interested = "interessada"
+
+
                 if approx_val == 0.00:
-                    return "{} no estava gens interessat en mi".format(subject)
+                    return "{} no estava gens {} en mi".format(subject,interested)
                 elif approx_val == 0.33:
-                    return "{} no estava interessat en mi".format(subject)
+                    return "{} no estava {} en mi".format(subject,interested)
                 elif approx_val == 0.67:
-                    return "{} estava interessat en mi".format(subject)
+                    return "{} estava {} en mi".format(subject,interested)
                 elif approx_val == 1.00:
-                    return "{} estava molt interessat en mi".format(subject)
+                    return "{} estava molt {} en mi".format(subject,interested)
             elif var_name == "Distance":
                 approx_val = round(value,2)
                 num = "uns"
@@ -590,7 +611,7 @@ class HeuristicTextCatalan(HeuristicText):
     
     
     def question_context_imaginary_person_absolute(self,var_name,new_person,person_name):
-        context_text = "Imagina't que hi hagués una persona, {}, que ".format(self.person_name("NEWPERSON",person_name))
+        context_text = "Imagina't que hi hagués una persona addicional, {}, que ".format(self.person_name("NEWPERSON",person_name))
 
         if var_name != "Mutual Gaze":
             if new_person["Mutual Gaze"] == 0:

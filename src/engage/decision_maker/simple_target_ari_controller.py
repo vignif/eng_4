@@ -18,12 +18,14 @@ class SimpleTargetARIController(RobotController):
 
     elicit_target_speech = {
         "en_GB": ["Hi","Hello","Come and talk with me","Come and play a game!","Do you want to talk with me?","Do you want to play a game?"],
-        "ca_ES": ["Hola","Bon dia","Apropa't i parla amb mi","Apropa't i juga amb mi!","Vols parlar amb mi?","Vols jugar un joc?"],
+        #"ca_ES": ["Hola","Bon dia","Apropa't i parla amb mi","Apropa't i juga amb mi!","Vols parlar amb mi?","Vols jugar un joc?"],
+        "ca_ES":["Hola","Bon dia","Com estàs?","Ei!"]
     }
 
     elicit_general_speech = {
         "en_GB": ["Does anybody want to talk with me?","Come and see what's on my tablet"],
-        "ca_ES": ["Algú vol parlar amb mi?","Apropa't i mira la meva tauleta"]
+        #"ca_ES": ["Algú vol parlar amb mi?","Apropa't i mira la meva tauleta"]
+        "ca_ES":["Hola","Bon dia","Com estàs?","Ei!"]
     }
 
     def __init__(self,world_frame="base_link",z_offset=0.3,language="english",**kwargs) -> None:

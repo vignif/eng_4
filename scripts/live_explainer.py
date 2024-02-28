@@ -97,11 +97,11 @@ class LiveExplainer:
             # Only handle decisions that are interesting, not e.g. NOTHING or WAITING
             dec_img,positions = self.get_decision_context(dec_time)
             # Get people name mapping
-            names = self.get_name_mapping(positions)
+            names,ids = self.get_name_mapping(positions)
 
             # Process image, add labels
             img = self.ros_img_to_cv2(dec_img)
-            img = self.draw_labels(img,positions,names)
+            img = self.draw_labels(img,positions,ids)
             self.save_image(img)
 
             # Set up explainer
@@ -151,16 +151,16 @@ class LiveExplainer:
             raise CvBridgeError
 
 
-    def draw_labels(self,img,positions,names):
+    def draw_labels(self,img,positions,ids):
         if img is None or positions is None:
             return img
             
         for i in range(len(positions.bodies)):
             if positions.points2d[i].x == -1 or positions.points2d[i].y == -1:
                 continue
-            name = names[positions.bodies[i]]
+            name = ids[positions.bodies[i]]
             org = (int(img.shape[1]*positions.points2d[i].x),int(img.shape[0]*positions.points2d[i].y))
-            img = cv2.putText(img, name, org, cv2.FONT_HERSHEY_SIMPLEX ,  1, (0,0,255), 2, cv2.LINE_AA)
+            img = cv2.putText(img, name, org, cv2.FONT_HERSHEY_SIMPLEX ,  8, (0,0,255), 2, cv2.LINE_AA)
         return img
 
     def save_image(self,img):
@@ -204,6 +204,7 @@ class LiveExplainer:
         body_order = sorted(x_poses, key=x_poses.get)
         
         names = {}
+        ids = {}
         for i in range(len(body_order)):
             if self.language.lower() in ["english","en_gb"]:
                 person_marker = "Person"
@@ -212,8 +213,9 @@ class LiveExplainer:
             else:
                 raise Exception("Langauge {} not recognised".format(self.language))
             names[body_order[i]] = "{} {}".format(person_marker,string.ascii_uppercase[i])
+            ids[body_order[i]] = string.ascii_uppercase[i]
 
-        return names
+        return names,ids
         
             
 
