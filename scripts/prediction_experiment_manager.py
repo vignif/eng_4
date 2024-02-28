@@ -101,6 +101,12 @@ class PredictionExperimentManager:
                 else:
                     duration = self.input_timeout_duration
                 self.timeout_timer = rospy.Timer(rospy.Duration(duration), self.timeout, oneshot=True)
+            # Lock decision making just in case it isn't already locked
+            try:
+                toggle_interaction = rospy.ServiceProxy('toggle_interaction', ToggleInteraction)
+                toggle_interaction(False)
+            except:
+                print("Failed to toggle interaction")
         elif self.state == "ELICIT":
             self.change_state("TEST")
 
@@ -115,8 +121,6 @@ class PredictionExperimentManager:
         go_to.value = page_name
         self.page_pub.publish(go_to)
         self.page = page_name
-
-
 
     def run(self):
         while not rospy.is_shutdown():

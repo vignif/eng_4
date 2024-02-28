@@ -31,7 +31,7 @@
     <arg name="image_mode" default="rgb"/>
 
     <arg name="decision_threshold" default="1"/>
-    <arg name="input_timeout_duration" default="45"/>
+    <arg name="input_timeout_duration" default="60"/>
     <arg name="start_timeout_duration" default="15"/>
     
     
