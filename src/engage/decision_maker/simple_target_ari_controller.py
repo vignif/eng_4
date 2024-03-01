@@ -19,13 +19,23 @@ class SimpleTargetARIController(RobotController):
     elicit_target_speech = {
         "en_GB": ["Hi","Hello","Come and talk with me","Come and play a game!","Do you want to talk with me?","Do you want to play a game?"],
         #"ca_ES": ["Hola","Bon dia","Apropa't i parla amb mi","Apropa't i juga amb mi!","Vols parlar amb mi?","Vols jugar un joc?"],
-        "ca_ES":["Hola","Bon dia","Com estàs?","Ei!"]
+        "ca_ES":["Hola","Bon dia","Com estàs?","Ei"]
     }
 
     elicit_general_speech = {
         "en_GB": ["Does anybody want to talk with me?","Come and see what's on my tablet"],
         #"ca_ES": ["Algú vol parlar amb mi?","Apropa't i mira la meva tauleta"]
-        "ca_ES":["Hola","Bon dia","Com estàs?","Ei!"]
+        "ca_ES":["Hola","Bon dia","Com estàs?","Ei"]
+    }
+
+    thank_you_utterance = {
+        "en_GB": ["Thank you for participating!"],
+        "ca_ES":["Moltes gràcies per participar!"]
+    }
+
+    start_test_utterance = {
+        "en_GB":["Can you guess what I'm thinking?","Come and play a game with me","Can you understand how I make decisions?"],
+        "ca_ES":["Pots endevinar què estic pensant?","Vols jugar un joc?"]
     }
 
     def __init__(self,world_frame="base_link",z_offset=0.3,language="english",**kwargs) -> None:
@@ -147,24 +157,46 @@ class SimpleTargetARIController(RobotController):
         expression = Expression()
         expression.expression = "excited"
         self.eye_publisher.publish(expression)
+        # Speech
+        tts_msg = TtsActionGoal()
+        tts_msg.goal.rawtext.lang_id = self.lang_id
+        tts_msg.goal.rawtext.text = np.random.choice(self.start_test_utterance[self.lang_id])
+        self.tts_publisher.publish(tts_msg)
+
 
     def execute_new_page_behaviour(self,page_name):
         # Gaze ahead
         self.reset_gaze()
 
+        motion = None
+        speech = None
+
         if page_name == "welcome_page":
             exp = "excited"
-        elif page_name == "consent_form_page":
-            exp = "neutral"
-        elif page_name == "played_before_page":
-            exp = "neutral"
-        elif page_name == "explanation_page":
-            exp = "neutral" 
         elif page_name == "prediction_page":
             exp = "confused" 
         elif page_name == "end_page":
             exp = "amazed"
+            motion = "bow"
+            speech = np.random.choice(self.thank_you_utterance[self.lang_id])
+        else:
+            exp = "neutral"
+            
 
+        # Eyes
         expression = Expression()
         expression.expression = exp
         self.eye_publisher.publish(expression)
+
+        # Gesture
+        if motion is not None:
+            motion_msg = PlayMotionActionGoal()
+            motion_msg.goal.motion_name = motion
+            self.motion_action_publisher.publish(motion_msg)
+
+        # Speech
+        if speech is not None:
+            tts_msg = TtsActionGoal()
+            tts_msg.goal.rawtext.lang_id = self.lang_id
+            tts_msg.goal.rawtext.text = speech
+            self.tts_publisher.publish(tts_msg)

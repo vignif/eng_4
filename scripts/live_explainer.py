@@ -3,6 +3,7 @@ import argparse
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 import string
+import numpy as np
 
 from sensor_msgs.msg import Image
 
@@ -102,7 +103,7 @@ class LiveExplainer:
             # Process image, add labels
             img = self.ros_img_to_cv2(dec_img)
             img = self.draw_labels(img,positions,ids)
-            self.save_image(img)
+            #self.save_image(img)
 
             # Set up explainer
             self.explainer.setup_explanation(dec,query=None,decision_maker=self.decision_maker,names=names)
@@ -155,13 +156,40 @@ class LiveExplainer:
         if img is None or positions is None:
             return img
             
+        
+        orgs = []
+        names = []
         for i in range(len(positions.bodies)):
             if positions.points2d[i].x == -1 or positions.points2d[i].y == -1:
                 continue
-            name = ids[positions.bodies[i]]
-            org = (int(img.shape[1]*positions.points2d[i].x),int(img.shape[0]*positions.points2d[i].y))
-            img = cv2.putText(img, name, org, cv2.FONT_HERSHEY_SIMPLEX ,  8, (0,0,255), 2, cv2.LINE_AA)
-        return img
+            names.append(ids[positions.bodies[i]])
+            orgs.append((int(img.shape[1]*positions.points2d[i].x),int(img.shape[0]*positions.points2d[i].y)))
+        
+        # Draw
+        new_img = self.draw_text(img,names,orgs)
+
+        return new_img
+    
+    def draw_text(self,img,texts,positions,radius=32,text_size=2,text_thickness=4):
+        # Draw circle
+        shapes = np.zeros_like(img, np.uint8)
+
+        for position in positions:
+            cv2.circle(shapes, position, radius, (255,255,255), -1, lineType=8)
+
+        # Blend
+        out = img.copy()
+        alpha = 0.5
+        mask = shapes.astype(bool)
+        out[mask] = cv2.addWeighted(img, alpha, shapes, 1 - alpha, 0)[mask]    
+
+        # Draw label
+        for text,position in zip(texts,positions):
+            text_size_cv2, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, text_size, text_thickness)
+            text_origin = (int(position[0] - text_size_cv2[0] / 2), int(position[1] + text_size_cv2[1] / 2))
+            cv2.putText(out, text, text_origin, cv2.FONT_HERSHEY_SIMPLEX ,  text_size, (0,0,255), 4, cv2.LINE_AA)
+
+        return out
 
     def save_image(self,img):
         cv2.imwrite('/home/tamlin/engage/latest_decision.jpeg', img)

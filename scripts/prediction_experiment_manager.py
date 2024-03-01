@@ -98,6 +98,8 @@ class PredictionExperimentManager:
                 self.timeout_timer.shutdown()
                 if self.page in ["prediction_page","end_page"]:
                     duration = self.start_timeout_duration
+                elif user_input.action == "deny_btn":
+                    duration = self.start_timeout_duration / 2
                 else:
                     duration = self.input_timeout_duration
                 self.timeout_timer = rospy.Timer(rospy.Duration(duration), self.timeout, oneshot=True)

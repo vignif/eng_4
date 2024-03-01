@@ -76,6 +76,6 @@
 
     <node name="prediction_experiment_manager" pkg="engage" type="prediction_experiment_manager.py" output="screen"
         args="-d $(arg decision_maker) -dt $(arg decision_threshold) --input_timeout_duration $(arg input_timeout_duration)
-        --start_timeout_duration $(arg start_timeout_duration) -r $(arg robot_controller)"
+        --start_timeout_duration $(arg start_timeout_duration) --language $(arg language) -r $(arg robot_controller)"
         />
 </launch>
