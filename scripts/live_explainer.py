@@ -224,7 +224,7 @@ class LiveExplainer:
 
     def get_name_mapping(self,positions):
         if positions is None:
-            return None
+            return None,None
         
         x_poses = {}
         for i in range(len(positions.bodies)):

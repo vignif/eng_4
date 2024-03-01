@@ -523,7 +523,7 @@ class HeuristicTextCatalan(HeuristicText):
                     rel_text = ", i més lluny que ningú més"
                 else:
                     rel_text = ", i més aprop que ningú més"
-                return "si {} estigués a {} {}m de mi{}".format(subject,num,approx_val)
+                return "si {} estigués a {} {}m de mi{}".format(subject,num,approx_val,rel_text)
             
             
         # Shouldn't get here
@@ -653,7 +653,7 @@ class HeuristicTextCatalan(HeuristicText):
                 rel_text = ", i més lluny que ningú més,"
             else:
                 rel_text = ", i més aprop que ningú més,"
-            context_text += "estigués a {}m de mi{} i {}.".format(new_person["Distance"],mg_text,rel_text)
+            context_text += "estigués a {}m de mi{} i {}.".format(new_person["Distance"],rel_text,mg_text)
         return context_text
     
     def question_text_imaginary_person_absolute(self,var_name,value,true_observation,person_name,further_flag=None):
