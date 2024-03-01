@@ -442,7 +442,7 @@ class HeuristicTextCatalan(HeuristicText):
                 foil_text += val_set + ", o "
             return foil_text[:-4]
         
-    def statement_text_conditional(self,var_cat,var_name,value,subject,true_observation,masculine=False):
+    def statement_text_conditional(self,var_cat,var_name,value,subject,true_observation,masculine=False,further_flag=None):
         if true_observation.variable_categories[var_name] == "Categorical":
             if var_name == "Group":
                 raise NotImplementedError
@@ -517,7 +517,14 @@ class HeuristicTextCatalan(HeuristicText):
                 num = "uns"
                 if approx_val == 1:
                     num = "un"
-                return "si {} estigués a {} {}m de mi".format(subject,num,approx_val)
+                if further_flag is None:
+                    rel_text = ""
+                elif further_flag:
+                    rel_text = ", i més lluny que ningú més"
+                else:
+                    rel_text = ", i més aprop que ningú més"
+                return "si {} estigués a {} {}m de mi{}".format(subject,num,approx_val)
+            
             
         # Shouldn't get here
         raise Exception(var_cat,var_name,value)
@@ -610,7 +617,7 @@ class HeuristicTextCatalan(HeuristicText):
         return "Què creus que faria {}?".format(question_statement)
     
     
-    def question_context_imaginary_person_absolute(self,var_name,new_person,person_name):
+    def question_context_imaginary_person_absolute(self,var_name,new_person,person_name,min_dist,max_dist):
         context_text = "Imagina't que hi hagués una persona addicional, {}, que ".format(self.person_name("NEWPERSON",person_name))
 
         if var_name != "Mutual Gaze":
@@ -623,16 +630,34 @@ class HeuristicTextCatalan(HeuristicText):
             elif new_person["Mutual Gaze"] == 3:
                 mg_text = "em mirés directament"
 
+        further_flag = None
+        if new_person["Distance"] < min_dist:
+            further_flag = False
+        elif new_person["Distance"] > max_dist:
+            further_flag = True
+
         if var_name == "Mutual Gaze":
-            context_text += "estigués a {}m de mi.".format(new_person["Distance"])
+            if further_flag is None:
+                rel_text = ""
+            elif further_flag:
+                rel_text = ", i més lluny que ningú més"
+            else:
+                rel_text = ", i més aprop que ningú més"
+            context_text += "estigués a {}m de mi{}.".format(new_person["Distance"],rel_text)
         elif var_name == "Distance":
             context_text += "{}.".format(mg_text)
         else:
-            context_text += "estigués a {}m de mi i {}.".format(new_person["Distance"],mg_text)
+            if further_flag is None:
+                rel_text = ""
+            elif further_flag:
+                rel_text = ", i més lluny que ningú més,"
+            else:
+                rel_text = ", i més aprop que ningú més,"
+            context_text += "estigués a {}m de mi{} i {}.".format(new_person["Distance"],mg_text,rel_text)
         return context_text
     
-    def question_text_imaginary_person_absolute(self,var_name,value,true_observation,person_name):
-        return "Què creus que faria {}?".format(self.statement_text_conditional("NEWPERSON",var_name,value,self.person_name("NEWPERSON",person_name),true_observation))
+    def question_text_imaginary_person_absolute(self,var_name,value,true_observation,person_name,further_flag=None):
+        return "Què creus que faria {}?".format(self.statement_text_conditional("NEWPERSON",var_name,value,self.person_name("NEWPERSON",person_name),true_observation,further_flag=further_flag))
     
     def person_name(self,name,name_func):
         if name == "NEWPERSON":

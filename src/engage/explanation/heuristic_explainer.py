@@ -333,21 +333,52 @@ class HeuristicExplanation(Explanation):
         new_state = copy.deepcopy(self.true_observation.state)
         new_state["NEWPERSON"] = new_person
 
+        # Distance stuff
+        question_texts = []
+        outcomes = []
+        possible_vals = observation.variable_cardinalities[var_name]
+        further_flag = None
+        distances = []
+        for key in new_state:
+            if key != "NEWPERSON" and "Distance" in new_state[key]:
+                distances.append(new_state[key]["Distance"])
+        min_dist = min(distances)
+        max_dist = max(distances)
+
+        
+
         # New observation
         observation = EngageStateObservation(new_state,self.bodies+["NEWPERSON"])
         var_name = self.var_names[self.variables[0]]
         intervention_order = self.counterfactual.intervention_order+["NEWPERSON_{}".format(var_name)]
-        context_text = self.text_generator.question_context_imaginary_person_absolute(var_name,new_person,self.person_name)
+        context_text = self.text_generator.question_context_imaginary_person_absolute(var_name,new_person,self.person_name,min_dist,max_dist)
         
-
-        question_texts = []
-        outcomes = []
-        for val in observation.variable_cardinalities[var_name]:
+        if var_name == "Distance":
+            further_flag = []
+            new_pos = []
+            for pval in possible_vals:
+                if pval < min_dist:
+                    further_flag.append(False)
+                    new_pos.append(pval)
+                elif pval > max_dist:
+                    further_flag.append(True)
+                    new_pos.append(pval)
+            if new_pos != []:
+                possible_vals = new_pos
+            else:
+                further_flag = None
+                
+        for i in range(len(possible_vals)):
+            val = possible_vals[i]
+            if further_flag is not None:
+                flag = further_flag[i]
+            else:
+                flag = None
             cont_val = observation.real_value(var_name,val)
             intervention = {"NEWPERSON":{var_name:val}}
             outcome = self.counterfactual.outcome(observation,intervention_order,intervention)
             outcomes.append(outcome)
-            q_text = self.text_generator.question_text_imaginary_person_absolute(var_name,cont_val,self.true_observation,self.person_name)
+            q_text = self.text_generator.question_text_imaginary_person_absolute(var_name,cont_val,self.true_observation,self.person_name,further_flag=flag)
             question_texts.append(q_text)
 
         return context_text,question_texts,outcomes
