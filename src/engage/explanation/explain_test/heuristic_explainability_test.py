@@ -29,7 +29,7 @@ class HeuristicExplainabilityTest(EngageStateExplainabilityTest):
         msg.question_context = self.question_context
         msg.question_text = self.question_text
         msg.answer_list = self.answer_texts
-        msg.correct_answer = self.right_answer_index
+        msg.correct_answer = self.right_answer_index+1 # +1 as indexing from 1
         msg.true_decision_action = self.explanation.true_outcome.string_action()
         msg.true_decision_target = self.explanation.true_outcome.string_target()
         msg.explanation_variable = self.exp_var
