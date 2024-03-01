@@ -112,7 +112,7 @@ class LiveExplainer:
             explainability_test = self.explainer.generate_explainability_test(self.groups[self.curr_group_index],self.var_nums,language=self.language)
             if not explainability_test.no_explanations:
                 print("Explanation found")
-                self.publish_explainability_test(explainability_test,img)
+                self.publish_explainability_test(explainability_test,img,dec_time)
                 #self.save_explainability_test(explainability_test)
 
                
@@ -247,9 +247,11 @@ class LiveExplainer:
         
             
 
-    def publish_explainability_test(self,et_test,image):
+    def publish_explainability_test(self,et_test,image,time):
         ros_img = self.cv_bridge.cv2_to_compressed_imgmsg(image)
-        message = et_test.to_message(ros_img)
+        blank_image = self.cv_bridge.cv2_to_compressed_imgmsg(np.zeros((1,1,3), np.uint8))
+        message = et_test.to_message(ros_img,time,blank_image)
+        print(message)
         self.et_pub.publish(message)
 
 

@@ -19,11 +19,13 @@ class HeuristicExplainabilityTest(EngageStateExplainabilityTest):
             self.answer_actions = self.answer_components["Actions"]
             self.answer_targets = self.answer_components["Targets"]
 
-    def to_message(self,image):
+    def to_message(self,image,time,blank_image):
         msg = Explainability()
 
+        msg.header.stamp = time
         msg.group = self.group
         msg.image = image
+        msg.blank_image = blank_image
         msg.explanation = self.exp_reason
         msg.counterfactual = self.exp_counterfactual
         msg.question_context = self.question_context

@@ -333,6 +333,15 @@ class HeuristicExplanation(Explanation):
         new_state = copy.deepcopy(self.true_observation.state)
         new_state["NEWPERSON"] = new_person
 
+        
+
+        
+
+        # New observation
+        observation = EngageStateObservation(new_state,self.bodies+["NEWPERSON"])
+        var_name = self.var_names[self.variables[0]]
+        intervention_order = self.counterfactual.intervention_order+["NEWPERSON_{}".format(var_name)]
+
         # Distance stuff
         question_texts = []
         outcomes = []
@@ -345,12 +354,7 @@ class HeuristicExplanation(Explanation):
         min_dist = min(distances)
         max_dist = max(distances)
 
-        
 
-        # New observation
-        observation = EngageStateObservation(new_state,self.bodies+["NEWPERSON"])
-        var_name = self.var_names[self.variables[0]]
-        intervention_order = self.counterfactual.intervention_order+["NEWPERSON_{}".format(var_name)]
         context_text = self.text_generator.question_context_imaginary_person_absolute(var_name,new_person,self.person_name,min_dist,max_dist)
         
         if var_name == "Distance":
