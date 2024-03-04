@@ -46,11 +46,11 @@
     </group>
 
     <node pkg="rosbag" type="record" name="rosbag_record"
-        args="-O $(arg bag_dir)/logbags/$(arg exp).bag --split --duration=$(arg rosbag_duration)m  $(arg pos_img) -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups /hri_engage/decision_states"
+        args="-O $(arg bag_dir)/logbags/$(arg exp).bag --split --duration=$(arg rosbag_duration)m -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups /hri_engage/decision_states"
         />
 
     <node pkg="rosbag" type="record" name="results_record"
-        args="-O $(arg bag_dir)/prediction_experiment/$(arg exp).bag --split --duration=$(arg rosbag_duration)m /hri_engage/decision_states /input_explanation /out_explanation"
+        args="-O $(arg bag_dir)/prediction_experiment/$(arg exp).bag --split --duration=$(arg rosbag_duration)m /hri_engage/decision_states /out_explanation"
         />
 
     <node name="pose" pkg="engage" type="pose.py"
