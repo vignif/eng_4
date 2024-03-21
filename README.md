@@ -6,16 +6,13 @@ A ros noetic package for planning and executing robot-human elicitations in mult
 
 # Installation
 
-This package requires Ubuntu 20.04 and ROS noetic. It also depends on the pyhri and hri_msgs packages for ROS4HRI (installation instructions [here](http://wiki.ros.org/hri/Tutorials/Installation%20of%20a%20ROS4HRI%20environment)), and the [play_motion_msgs](https://github.com/pal-robotics/play_motion) and [pal_interaction_msgs](https://github.com/pal-robotics/pal_msgs) packages from Pal robotics. For pose estimation, this package relies on OpenDR, available [here](https://github.com/opendr-eu/opendr/blob/master/docs/reference/installation.md). Note that this implementation has only been tested with the GPU version of OpenDR, using pytorch 1.13.1+cu117.
+This package requires Ubuntu 20.04 and ROS noetic. It also depends on the pyhri and hri_msgs packages for ROS4HRI (installation instructions [here](http://wiki.ros.org/hri/Tutorials/Installation%20of%20a%20ROS4HRI%20environment)), and the [play_motion_msgs](https://github.com/pal-robotics/play_motion) and [pal_interaction_msgs and pal_web_msgs](https://github.com/pal-robotics/pal_msgs) packages from Pal robotics. For pose estimation, this package relies on OpenDR, available [here](https://github.com/opendr-eu/opendr/blob/master/docs/reference/installation.md). Note that this implementation has only been tested with the GPU version of OpenDR, using pytorch 1.13.1+cu117.
 
 For python packages required, see the [requirements.txt](requirements.txt) file. Use of a virtual environment, such as [rosvenv](https://github.com/ARoefer/rosvenv), is highly recommended.
 
 Hardware-wise, this package requires an RGB and depth stream from a camera, such as a realsense D435i. The robot controller scripts have been tested with a [Pal ARI](https://pal-robotics.com/robots/ari/).
 
 # Usage
-
-In this package there are four main scripts: one for <a href="#pose-estimation">pose estimation</a>, one for calculating <a href="#high-level-features">high-level features</a>, one for <a href="#decision-making">calculating decisions</a>, and one for visualising rosbags and explaining decisions post-hoc.
-
 ## Pose Estimation
 
 If all you want to do is pose estimation, you can run the following:
@@ -133,22 +130,43 @@ If decisions are executed using one of the controller scripts written for the Pa
 - /look_at, geometry_msgs/PointStamped - the gaze target for the robot
 - /tts/goal, pal_interaction_msgs/TtsActionGoal - the text-to-speech instructions for the robot
 
-## Visualisation
-
-**This feature is still under construction and prone to breaking**
-
-`rosrun engage viewer.py`
-
 ## Live Explanations
 
-If you want the robot to explain its decisions in realtime as they occurr, you can use the [/live_explainer](/scripts/live_explainer.py) node.
+If you wish to run the experiments detailed in our RO-MAN paper, you can run the following:
+
+`roslaunch engage prediction_experiment.launch exp:=<experiment_name> language:=catalan`
+
+This runs all of the aforementioned nodes, as well as one that generates explanations in real-time and one that manages the tablet interface.
+
+In addition to the previously mentioned arguments, this launch file also takes in the following:
+
+- explain_image_buffer - *default: 5*, the number of image messages to be saved in a buffer for use in the prediction game
+- explainer - *default: counterfactual*, the explanation generation module, currently only *counterfactual* is supported, but there is a LIME explainer with limited functionality
+- groups - *default: all*, which experimental conditions to use. *all* uses groups C, E and CF. For single groups, use *control* (C), *nocf* (E) or *full* (CF). *nomid*, for groups C and CF, is also supported.
+- image_mode - *default: rgb*, if *rgb* will display RGB images to participants, and if *pose* will use the annotated pose image
+- decision_threshold - *default: 1*, the distance within which the decision-making will be paused and the predicition test behaviour will take over
+- input_timeout_duration - *default: 60*, the number of seconds to wait after each input before the test times out
+- start_timeout_duration - *default: 15*, a shorter timeout duration, used on the first page if nobody starts the test
+
+In addition to the */pose*, */engagement* and */decide* nodes, this launch file also spins up */live_explainer* and */prediction_experiment_manager* nodes. The */live_explainer* node has the following subscribed/published topics:
 
 ***Subscribed Topics***
-
-- /camera/color/image_raw (could be different, see arguments), sensor_msgs/Image - the topic of the RGB image stream
-- /humans/bodies/positions, engage/PeoplePositions - the names and positions of people, used for labelling
-- /hri_engage/decision_states, engage/... (different message depending on decision-maker, see Decision-making above) - the state used to make the decision
+- /camera/color/image_raw (could be different, see launch file arguments), sensor_msgs/Image - the topic of the RGB or pose image stream
+- /humans/bodies/positions, engage/PeoplePositions - the positions of each person, for use in labelling the prediction test image
+- /hri_engage/decision_states, message type varies depending on decision-maker as above - the decisions and states used to generate explanations
+- /out_explanation, explanation_msgs/Explainability - the topic for final results, listened to in order to change group and explanation variable
 
 ***Published Topics***
-- /explanation_test/explanation, explanation_msgs/Explainability - the text explanations, follow-up questions, etc. (see [here](https://github.com/aandriella/explainaibility_app))
 
+- /input_explanation, explanation_msgs/Explainability - the topic for explanations which the tablet listens to
+
+The */prediction_experiment_manager* on the other hand has the following subscribed/published topics:
+
+***Subscribed Topics***
+- /hri_engage/decision_states, message type varies depending on decision-maker as above - the decisions and states used to check if anyone is close to the robot
+- /page_name, std_msgs/String - the name of the current tablet page
+- /user_input, pal_interaction_msgs/Input - the input on the tablet
+
+***Published Topics***
+
+- /web/go_to, pal_web_msgs/WebGoTo - for controlling the tablet
