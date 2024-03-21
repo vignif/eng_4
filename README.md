@@ -1,6 +1,6 @@
 # Engage
 
-A ros noetic package for planning and executing robot-human elicitations in multi-person unstructured environments. See our [late breaking report at HRI 2024](https://www.iri.upc.edu/groups/perception/#TRAIL_XHRI) to learn more.
+A ros noetic package for executing and explaining robot-human elicitations in multi-person unstructured environments. See our [late breaking report at HRI 2024](https://www.iri.upc.edu/groups/perception/#TRAIL_XHRI) to learn more.
 
 ![The perception, decision-making and explanation pipeline](/repo/img/teaser.png)
 
