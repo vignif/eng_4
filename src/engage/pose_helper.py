@@ -480,6 +480,7 @@ class HRIPoseBody:
         for i in range(Pose.num_kpts):
             if self.skeleton.skeleton[i] is None:
                 self.skeleton.skeleton[i] = NormalizedPointOfInterest2D(-1,-1,0)
+        
         self.skeleton_pub.publish(self.skeleton)
 
         # Publish Pose

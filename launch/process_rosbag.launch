@@ -33,7 +33,7 @@
         args="-O $(arg bag_dir)/logbags/$(arg exp).bag -e '/humans/bodies/(.*)|/hri_engage/(.*)' /humans/interactions/engagements /humans/interactions/groups"
         />
 
-    <node name="pose" pkg="engage" type="pose.py"
+    <node name="pose" pkg="engage" type="pose.py" output="screen"
         args="-i $(arg rgb_img) -d $(arg dep_img) -ii $(arg rgb_inf) -di $(arg dep_inf) -p $(arg pos_img) 
         --camera_frame $(arg cam_frame) --world_frame $(arg world_frame)"
         />

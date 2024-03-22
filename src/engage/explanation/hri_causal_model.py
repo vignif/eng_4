@@ -39,7 +39,7 @@ class SimpleCausalModel:
             # Get causal effect
             if u_list[1] in ["Distance","Mutual Gaze"] and v_list[1] == "Engagement Value":
                 new_ev = min(1,(var_vals["Mutual Gaze"]/max(self.cardinalities["Mutual Gaze"]))/var_vals["Distance"] if var_vals["Distance"] != 0 else 0)
-                changes[u_list[0]]["Engagement Value"] = DecisionState.float_bucket(new_ev)
+                changes[u_list[0]]["Engagement Value"] = DecisionState.float_bucket(new_ev) # TODO: Fix this
             elif u_list[1] == "Engagement Value" and v_list[1] == "Engagement Level":
                 # TODO: Implement something smarter here for estimating engagement level
                 ev = var_vals["Engagement Value"]/max(self.cardinalities["Engagement Value"])
