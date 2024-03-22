@@ -123,6 +123,9 @@ Depending on the type of decision maker, a different decision and state message 
 - random_robot
   - /hri_engage/decisions, engage_msgs/RobotDecision - the decision made
   - /hri_engage/decision_states, engage_msgs/RobotStateDecision - the state used to make the decision
+- simple_target
+  - /hri_engage/decisions, engage_msgs/HeuristicDecision - the decision made
+  - /hri_engage/decision_states, engage_msgs/HeuristicStateDecision - the state used to make the decision
 
 If decisions are executed using one of the controller scripts written for the Pal ARI, then the following topics are also published to:
 
