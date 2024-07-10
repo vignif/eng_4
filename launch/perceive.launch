@@ -1,11 +1,11 @@
 <launch>
     <arg name="cam_name" default="camera"/>
-    <arg name="rgb_img" default="/$(arg cam_name)/color/image_raw"/>
-    <arg name="dep_img" default="/$(arg cam_name)/depth/image_rect_raw"/>
-    <arg name="rgb_inf" default="/$(arg cam_name)/color/camera_info"/>
-    <arg name="dep_inf" default="/$(arg cam_name)/depth/camera_info"/>
+    <arg name="rgb_img" default="/naoqi_driver_node/camera/front/camera_raw"/>
+    <arg name="dep_img" default="/naoqi_driver_node/depth/image_rect_raw"/>
+    <arg name="rgb_inf" default="/naoqi_driver_node/camera/front/camera_info"/>
+    <arg name="dep_inf" default="/naoqi_driver_node/depth/camera_info"/>
     <arg name="pos_img" default="/opendr/pose_img"/>
-    <arg name="cam_frame" default="sellion_link"/>
+    <arg name="cam_frame" default="CameraTop_optical_frame"/>
     <arg name="world_frame" default="base_link"/>
     <arg name="accelerate" default="False"/>
 
