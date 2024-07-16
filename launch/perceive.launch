@@ -1,18 +1,18 @@
 <launch>
     <arg name="cam_name" default="camera"/>
-    <arg name="rgb_img" default="/naoqi_driver_node/camera/front/camera_raw"/>
-    <arg name="dep_img" default="/naoqi_driver_node/depth/image_rect_raw"/>
+    <arg name="rgb_img" default="/naoqi_driver_node/camera/front/image_raw"/>
+    <arg name="dep_img" default="/naoqi_driver_node/camera/depth/image_raw"/>
     <arg name="rgb_inf" default="/naoqi_driver_node/camera/front/camera_info"/>
-    <arg name="dep_inf" default="/naoqi_driver_node/depth/camera_info"/>
+    <arg name="dep_inf" default="/naoqi_driver_node/camera/depth/camera_info"/>
     <arg name="pos_img" default="/opendr/pose_img"/>
     <arg name="cam_frame" default="CameraTop_optical_frame"/>
     <arg name="world_frame" default="base_link"/>
     <arg name="accelerate" default="False"/>
 
-    <arg name="engagement_threshold" default="0.55"/>
+    <arg name="engagement_threshold" default="0.001"/>
     <arg name="max_angle" default="1.57079632679"/>
     
-    
+    <param name="/use_sim_time" value="true"/>
     <node name="pose" pkg="engage" type="pose.py"
         args="-i $(arg rgb_img) -d $(arg dep_img) -ii $(arg rgb_inf) -di $(arg dep_inf) -p $(arg pos_img) 
         --camera_frame $(arg cam_frame) --world_frame $(arg world_frame) --accelerate $(arg accelerate)"

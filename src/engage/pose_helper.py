@@ -392,7 +392,11 @@ class HRIPoseBody:
                 * depth_model.fy()
                 / rgb_model.fy())
                 + depth_model.cy())
-        z = depth_image[y_d][x_d]/1000
+        if y_d < depth_image.shape[0] and x_d < depth_image.shape[1]:
+            z = depth_image[y_d][x_d] / 1000
+        else:
+            # Handle the case where indices are out of bounds
+            z = 0.0  # or any default value or error handling appropriate for your application
 
         x = (x_d - depth_model.cx())*z/depth_model.fx()
         y = (y_d - depth_model.cy())*z/depth_model.fy()

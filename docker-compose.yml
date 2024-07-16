@@ -1,0 +1,21 @@
+services:
+  eng_4:
+    image: eng_4:latest
+    container_name: eng_4
+    environment:
+      - ROS_MASTER_URI=http://172.21.0.2:11311
+      - ROS_HOSTNAME=172.21.0.5
+    networks:
+      eng_ros_network:
+        ipv4_address: 172.21.0.5
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    tty: true
+    stdin_open: true
+
+networks:
+  eng_ros_network:
+    external: true
