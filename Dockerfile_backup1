@@ -1,0 +1,107 @@
+# Dockerfile for OpenFace setup based on Unix installation instructions
+# FROM ubuntu20.04-cuda11.3.1-opencv4.5.2-rosnoetic:ros-latest
+
+ARG CUDA="11.2"
+ARG UBUNTU="20.04"
+ARG OPENCV="4.5.2"
+ARG ARCH=""
+
+# FROM thecanadianroot/opencv-cuda:ubuntu${UBUNTU}-cuda${CUDA}-opencv${OPENCV}${ARCH}
+FROM nvidia/cuda:11.2.2-cudnn8-devel-ubuntu20.04
+LABEL maintainer="Francesco Vigni <vignif@gmail.com>"
+
+# Setup timezone
+RUN echo 'Etc/UTC' > /etc/timezone && ln -s /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
+    apt-get update && apt-get install -q -y --no-install-recommends tzdata
+
+# Install essential packages
+RUN apt-get update && apt-get install -q -y --no-install-recommends \
+    dirmngr gnupg2 wget build-essential checkinstall \
+    libreadline-gplv2-dev libncursesw5-dev libssl-dev libsqlite3-dev \
+    tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev zlib1g-dev \
+    && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 \
+    && echo "deb http://packages.ros.org/ros/ubuntu focal main" > /etc/apt/sources.list.d/ros1-latest.list
+
+# Install Python 3.10.0
+RUN cd /usr/src && \
+    wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tgz && \
+    tar xzf Python-3.9.0.tgz && \
+    cd Python-3.9.0 && \
+    ./configure --enable-optimizations && \
+    make altinstall && \
+    rm /usr/src/Python-3.9.0.tgz
+
+# Ensure only Python 3.10 is used and remove other Python versions
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python3.9 1 && \
+    update-alternatives --install /usr/bin/pip3 pip3 /usr/local/bin/pip3.9  1
+
+# Install essential build tools and dependencies
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    build-essential g++-8 cmake git libopenblas-dev libgtk2.0-dev pkg-config \
+    libavcodec-dev libavformat-dev libswscale-dev python3-opencv python3-rosdep \
+    python3-catkin-tools libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev \
+    libdc1394-22-dev unzip wget ros-noetic-catkin ros-noetic-cv-bridge \
+    libyaml-cpp-dev ros-noetic-tf2* apturl libosmesa6-dev libgl1-mesa-dev \
+    libglu1-mesa-dev libavdevice-dev libavutil-dev libavfilter-dev \
+    libswresample-dev libfreetype6-dev libsndfile1 libboost-dev libeigen3-dev \
+    ros-noetic-image-geometry ros-noetic-trajectory-msgs ros-noetic-visualization-msgs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Ensure python3 and pip3 are the default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
+
+# Install GCC 8 if not already installed
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 90 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 90
+
+# Install required version of CMake if not available
+RUN cmake_version=$(cmake --version | grep -oP "(?<=cmake version )[\d\.]+") && \
+    if dpkg --compare-versions "$cmake_version" "lt" "3.8"; then \
+        mkdir -p /tmp/cmake_tmp && \
+        cd /tmp/cmake_tmp && \
+        wget https://cmake.org/files/v3.10/cmake-3.10.1.tar.gz && \
+        tar -xzvf cmake-3.10.1.tar.gz -qq && \
+        cd cmake-3.10.1/ && \
+        ./bootstrap && \
+        make -j$(nproc) && \
+        make install && \
+        cd / && \
+        rm -rf /tmp/cmake_tmp; \
+    fi
+
+# Copy your source code to the container
+COPY /catkin_ws /catkin_ws
+
+WORKDIR /catkin_ws
+
+# Set Git access token as an environment variable
+ENV GIT_ACCESS_TOKEN=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
+RUN git clone https://${GIT_ACCESS_TOKEN}@github.com/vignif/grace_common_msgs.git /catkin_ws/src/grace_common_msgs
+
+
+RUN pip install --upgrade pip setuptools wheel==0.38.4
+
+COPY requirements.txt requirements.txt
+
+RUN pip install -r requirements.txt --user
+# RUN pip install opendr-toolkit-engine
+
+# Install pyhri from GitHub
+RUN git clone https://github.com/ros4hri/pyhri.git ./src/pyhri
+
+# Remove default ROS sources list to prevent conflicts
+RUN rm -f /etc/ros/rosdep/sources.list.d/20-default.list
+
+# Initialize rosdep and install dependencies
+RUN rosdep init && \
+    rosdep update && \
+    rosdep install --from-paths src --ignore-src -y
+
+# Copy and set the entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+RUN /entrypoint.sh
+
+CMD [ "/bin/bash" ]

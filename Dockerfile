@@ -1,130 +1,78 @@
-# Dockerfile for OpenFace setup based on Unix installation instructions
-# FROM ubuntu20.04-cuda11.3.1-opencv4.5.2-rosnoetic:ros-latest
-
-ARG CUDA="11.2"
-ARG UBUNTU="20.04"
-ARG OPENCV="4.5.2"
-ARG ARCH=""
-
-# FROM thecanadianroot/opencv-cuda:ubuntu${UBUNTU}-cuda${CUDA}-opencv${OPENCV}${ARCH}
-FROM nvidia/cuda:11.2.2-cudnn8-devel-ubuntu20.04
+FROM opendr/opendr-toolkit:cuda_v3.0.0
 LABEL maintainer="Francesco Vigni <vignif@gmail.com>"
 
-
-## ROS CORE
-# setup timezone
-RUN echo 'Etc/UTC' > /etc/timezone; ln -s /usr/share/zoneinfo/Etc/UTC /etc/localtime; exit 0
-RUN apt-get update && apt-get install -q -y --no-install-recommends tzdata
-# install packages
-RUN apt-get update && apt-get install -q -y --no-install-recommends dirmngr gnupg2
-# setup keys
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
-# setup sources.list
-RUN echo "deb http://packages.ros.org/ros/ubuntu focal main" > /etc/apt/sources.list.d/ros1-latest.list
-
-# setup environment
-ENV DEBIAN_FRONTEND=noninteractive
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
-ENV ROS_DISTRO noetic
+# Install essential packages
+RUN apt-get update 
 ENV DISABLE_BCOLZ_AVX2=true
 
-# Set environment variables
-ENV CUDA_HOME=/usr/local/cuda
-ENV PATH=${CUDA_HOME}/bin:${PATH}
-ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
-ENV LD_LIBRARY_PATH=/usr/local/lib/python3.8/dist-packages/nvidia/cublas/lib:${LD_LIBRARY_PATH}
-
-ENV CUDA_VISIBLE_DEVICES=0 
-
-
-# Install essential build tools and dependencies
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    build-essential \
-    g++-8 \
-    cmake \
-    git \
-    libopenblas-dev \
-    libgtk2.0-dev \
-    pkg-config \
-    libavcodec-dev \
-    libavformat-dev \
-    libswscale-dev \
-    python-dev \
-    python-numpy \
-    python3-opencv \
-    python3-rosdep \
-    python3-catkin-tools \
-    libtbb2 \
-    libtbb-dev \
-    libjpeg-dev \
-    libpng-dev \
-    libtiff-dev \
-    libdc1394-22-dev \
-    unzip \
-    wget \
-    ros-noetic-catkin \
-    ros-noetic-cv-bridge \
-    libyaml-cpp-dev \
-    ros-noetic-tf2* \
-    apturl \
-    python3-pip \
-    libosmesa6-dev \
-    libgl1-mesa-dev \
-    libglu1-mesa-dev \
-    libavdevice-dev \
-    libavutil-dev \
-    libavfilter-dev \
-    libswresample-dev \
-    python3.8-venv \
-    libfreetype6-dev \
-    libsndfile1 \
-    libboost-dev \
-    libeigen3-dev \
-    ros-noetic-image-geometry \
-    ros-noetic-visualization-msgs \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install GCC 8 if not already installed
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 90 && \
-    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 90
-
-# Install required version of CMake if not available
-RUN cmake_version=$(cmake --version | grep -oP "(?<=cmake version )[\d\.]+") && \
-    if dpkg --compare-versions "$cmake_version" "lt" "3.8"; then \
-        mkdir -p /tmp/cmake_tmp && \
-        cd /tmp/cmake_tmp && \
-        wget https://cmake.org/files/v3.10/cmake-3.10.1.tar.gz && \
-        tar -xzvf cmake-3.10.1.tar.gz -qq && \
-        cd cmake-3.10.1/ && \
-        ./bootstrap && \
-        make -j$(nproc) && \
-        make install && \
-        cd / && \
-        rm -rf /tmp/cmake_tmp; \
-    fi
-
 # Copy your source code to the container
-COPY . /catkin_ws/src/engage/
+COPY /catkin_ws /catkin_ws
 
 WORKDIR /catkin_ws
 
-# Update pip and install Python packages
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install tsmoothie networkx wheel==0.38.4 && \
-    pip install Cython && \ 
-    pip install opendr-toolkit-engine av opendr-toolkit && \
-    pip install opencv-python==4.6.0.66 && \
-    pip install opencv-python-headless==4.2.0.34
-    # pip install nvidia-pyindex nvidia-cudnn
-    # pip install opencv-contrib-python==4.5.5.62
-    
-# pip install --upgrade numpy scipy \
-RUN git clone https://github.com/ros4hri/pyhri.git ./src/pyhri
-    
-RUN apt-get update 
+# Install necessary packages
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    git \
+    python3 \
+    python3-pip \
+    libfreetype6-dev \
+    build-essential \
+    cmake \
+    python3-dev \
+    wget \
+    libopenblas-dev \
+    libsndfile1 \
+    libboost-dev \
+    libeigen3-dev \
+    ffmpeg \
+    libavcodec-dev \
+    libavformat-dev \
+    libavdevice-dev \
+    libavfilter-dev \
+    libavutil-dev \
+    libswscale-dev \
+    libavresample-dev \
+    libopenmpi-dev \
+    libswresample-dev && \
+    rm -rf /var/lib/apt/lists/*
 
+
+# Set Git access token as an environment variable
+ENV GIT_ACCESS_TOKEN=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
+RUN git clone https://${GIT_ACCESS_TOKEN}@github.com/vignif/grace_common_msgs.git /catkin_ws/src/grace_common_msgs
+
+
+RUN pip install --upgrade pip setuptools wheel==0.38.4
+
+RUN pip install catkin-pkg \
+                catkin-pkg-modules \
+                catkin-tools \ 
+                wheel==0.38.4 \
+                tsmoothie \ 
+                networkx 
+
+RUN pip install torch==1.13.1+cu116 torchvision==0.14.1+cu116 torchaudio==0.13.1 -f https://download.pytorch.org/whl/torch_stable.html
+RUN pip install 'git+https://github.com/facebookresearch/detectron2.git'
+RUN pip install mxnet-cu112==1.8.0post0 av
+RUN pip install opendr-toolkit-engine
+# RUN pip install opendr-toolkit-engine
+RUN pip install opendr-toolkit-face-recognition
+RUN pip install opendr-toolkit-pose-estimation
+
+RUN git clone https://github.com/ros-perception/vision_opencv.git -b noetic ./src/vision_opencv
+
+# RUN pip install opendr-toolkit
+
+# COPY requirements.txt requirements.txt
+
+# RUN pip install -r requirements.txt --user
+# RUN pip install opendr-toolkit-engine
+
+# Install pyhri from GitHub
+RUN git clone https://github.com/ros4hri/pyhri.git ./src/pyhri
+
+# Remove default ROS sources list to prevent conflicts
 RUN rm -f /etc/ros/rosdep/sources.list.d/20-default.list
 
 # Initialize rosdep and install dependencies
@@ -132,9 +80,9 @@ RUN rosdep init && \
     rosdep update && \
     rosdep install --from-paths src --ignore-src -y
 
+# Copy and set the entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 RUN /entrypoint.sh
 
 CMD [ "/bin/bash" ]
-# ENTRYPOINT ["/entrypoint.sh"]

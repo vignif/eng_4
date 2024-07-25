@@ -2,7 +2,8 @@ import rospy
 import argparse
 
 from message_filters import ApproximateTimeSynchronizer, Subscriber
-from engage.msg import EngagementValue,Group,EngagementLevel,MotionActivity,PoseArrayUncertain,HeuristicStateDecision,RobotStateDecision
+from engage.msg import Group,EngagementLevel,MotionActivity,PoseArrayUncertain,HeuristicStateDecision,RobotStateDecision
+from grace_common_msgs.msg import EngagementValue
 from hri_msgs.msg import IdsList
 from geometry_msgs.msg import TwistStamped,Twist
 

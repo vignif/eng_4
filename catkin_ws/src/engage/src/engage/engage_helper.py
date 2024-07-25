@@ -8,7 +8,8 @@ from engage.utils import VectorHelper,RandomID
 from engage.pose_helper import HRIPoseBody
 
 from message_filters import ApproximateTimeSynchronizer, Subscriber
-from engage.msg import MotionActivity,Group,EngagementLevel,EngagementValue,PoseArrayUncertain
+from engage.msg import MotionActivity,Group,EngagementLevel,PoseArrayUncertain
+from grace_common_msgs.msg import EngagementValue
 from geometry_msgs.msg import TwistStamped,Vector3Stamped
 
 
