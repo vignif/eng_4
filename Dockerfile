@@ -39,7 +39,7 @@ RUN apt-get update && \
 
 
 # Set Git access token as an environment variable
-ENV GIT_ACCESS_TOKEN=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
+ENV GIT_ACCESS_TOKEN
 RUN git clone https://${GIT_ACCESS_TOKEN}@github.com/vignif/grace_common_msgs.git /catkin_ws/src/grace_common_msgs
 
 
@@ -83,6 +83,7 @@ RUN rosdep init && \
 # Copy and set the entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-RUN /entrypoint.sh
+# RUN /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 
-CMD [ "/bin/bash" ]
+# CMD [ "/bin/bash" ]

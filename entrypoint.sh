@@ -9,8 +9,11 @@ catkin build
 
 source devel/setup.bash
 
-# roslaunch engage perceive.launch 
+# rosparam delete /use_sim_time
+
+roslaunch engage perceive.launch 
+
 
 # Keep the container running
-# exec "$@"
+exec "$@"
 
