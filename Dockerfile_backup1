@@ -77,7 +77,7 @@ COPY /catkin_ws /catkin_ws
 WORKDIR /catkin_ws
 
 # Set Git access token as an environment variable
-ENV GIT_ACCESS_TOKEN=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
+ENV GIT_ACCESS_TOKEN
 RUN git clone https://${GIT_ACCESS_TOKEN}@github.com/vignif/grace_common_msgs.git /catkin_ws/src/grace_common_msgs
 
 
